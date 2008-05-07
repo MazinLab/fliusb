@@ -319,6 +319,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
     goto done;
   }
 
+  
   dev->usbsg.slist[0].page = dev->usbsg.userpg[0];
   dev->usbsg.slist[0].offset = pgoffset;
   dev->usbsg.slist[0].length = min(count, (size_t)(PAGE_SIZE - pgoffset));
@@ -340,7 +341,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
   }
 
   if ((err = usb_sg_init(&dev->usbsg.sgreq, dev->usbdev, pipe, 0,
-			 dev->usbsg.slist, numpg, 0, SLAB_KERNEL)))
+			 dev->usbsg.slist, numpg, 0, GFP_KERNEL)))
   {
     FLIUSB_ERR("usb_sg_init() failed: %d", err);
     goto done;
