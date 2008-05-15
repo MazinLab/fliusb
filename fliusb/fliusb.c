@@ -56,6 +56,7 @@
 #ifdef SGREAD
 #include <linux/mm.h>
 #include <linux/pagemap.h>
+#include <linux/scatterlist.h>
 #include <asm/scatterlist.h>
 #endif
 
@@ -319,15 +320,19 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
     goto done;
   }
 
-  
+#if (LINUX_VERSION_CODE < KERNEL_VERSION (2,6,24))
   dev->usbsg.slist[0].page = dev->usbsg.userpg[0];
   dev->usbsg.slist[0].offset = pgoffset;
   dev->usbsg.slist[0].length = min(count, (size_t)(PAGE_SIZE - pgoffset));
+#else
+  sg_set_page(&dev->usbsg.slist[0], dev->usbsg.userpg[0], min(count, (size_t)(PAGE_SIZE - pgoffset)), pgoffset);
+#endif
 
   if (numpg > 1)
   {
     for (i = 1; i < numpg - 1; i++)
     {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
       dev->usbsg.slist[i].page = dev->usbsg.userpg[i];
       dev->usbsg.slist[i].offset = 0;
       dev->usbsg.slist[i].length = PAGE_SIZE;
@@ -338,6 +343,16 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
     dev->usbsg.slist[i].length = ((size_t)userbuffer + count) & (PAGE_SIZE - 1);
     if (dev->usbsg.slist[i].length == 0)
       dev->usbsg.slist[i].length = PAGE_SIZE;
+#else
+      sg_set_page(&dev->usbsg.slist[i], dev->usbsg.userpg[i], PAGE_SIZE, 0);
+    }
+
+    if ((((size_t)userbuffer + count) & (PAGE_SIZE - 1)) == 0)
+      sg_set_page(&dev->usbsg.slist[i], dev->usbsg.userpg[i], PAGE_SIZE, 0);
+    else 
+      sg_set_page(&dev->usbsg.slist[i], dev->usbsg.userpg[i], ((size_t)userbuffer + count) & (PAGE_SIZE - 1), 0);
+
+#endif
   }
 
   if ((err = usb_sg_init(&dev->usbsg.sgreq, dev->usbdev, pipe, 0,
@@ -424,7 +439,12 @@ static int fliusb_bulk_write(fliusb_t *dev, unsigned int pipe,
   /* a simple blocking bulk write */
   if ((err = usb_bulk_msg(dev->usbdev, pipe, dev->buffer, count, &cnt,
 			  (timeout * HZ + 500) / 1000)))
+  {
     cnt = err;
+    // reset USB in case of an error
+    err = usb_reset_configuration (dev->usbdev);
+    FLIUSB_DBG("configuration return: %d", err);
+  }
 
  done:
 
