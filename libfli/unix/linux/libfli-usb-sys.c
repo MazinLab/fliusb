@@ -45,12 +45,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14))
-#include <usb.h>
-#include <linux/usb.h>
-#else
-#include <linux/usb_ch9.h>
-#endif
+#include <linux/fli-usb.h>
 
 #include <linux/usbdevice_fs.h>
 #include <sys/ioctl.h>
