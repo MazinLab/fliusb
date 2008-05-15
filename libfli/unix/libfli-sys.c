@@ -53,6 +53,8 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <glob.h>
+#include <sys/ioctl.h>
+#include <linux/usb/ch9.h>
 
 #include "libfli-libfli.h"
 #include "libfli-debug.h"
@@ -63,6 +65,7 @@
 #include "libfli-parport.h"
 #include "libfli-usb.h"
 #include "libfli-serial.h"
+#include "linux/fliusb_ioctl.h"
 
 static long unix_fli_list_parport(flidomain_t domain, char ***names);
 static long unix_fli_list_usb(flidomain_t domain, char ***names);
@@ -71,6 +74,7 @@ static long unix_fli_list_serial(flidomain_t domain, char ***names);
 long unix_fli_connect(flidev_t dev, char *name, long domain)
 {
   fli_unixio_t *io;
+  struct usb_device_descriptor usbdesc;
 
   CHKDEVICE(dev);
 
@@ -112,6 +116,26 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
 	xfree(io);
 	return r;
       }
+
+      if (ioctl(io->fd, FLIUSB_GET_DEVICE_DESCRIPTOR, &usbdesc) == -1)
+      {
+        debug(FLIDEBUG_FAIL, "%s: Could not read descriptor: %s",
+              __PRETTY_FUNCTION__, strerror(errno));
+        return -EIO;
+      }
+
+      // do not try to open camera as filter wheel or focuser
+      switch (DEVICE->devinfo.type)
+      {
+        case FLIDEVICE_CAMERA:
+          break;
+        case FLIDEVICE_FOCUSER:
+        case FLIDEVICE_FILTERWHEEL:
+          if (usbdesc.idProduct == 0x0002)
+            return -ENODEV;
+          break;
+      }
+
       DEVICE->fli_io = unix_usbio;
     }
     break;
@@ -422,7 +446,8 @@ static long unix_fli_list_glob(char *pattern, flidomain_t domain,
       continue;
 
     if ((list[found] = xmalloc(strlen(g.gl_pathv[i]) +
-			       strlen(DEVICE->devinfo.model) + 2)) == NULL)
+			       (DEVICE->devinfo.model ? strlen(DEVICE->devinfo.model) : 6) +
+			       2)) == NULL)
     {
       int j;
 
