@@ -134,6 +134,7 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
         case FLIDEVICE_FOCUSER:
 	  if (usbdesc.idProduct != 0x0006)
 	    return -ENODEV;
+	  break;
         case FLIDEVICE_FILTERWHEEL:
           if (usbdesc.idProduct != 0x0007)
             return -ENODEV;
