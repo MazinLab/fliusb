@@ -124,14 +124,18 @@ long unix_fli_connect(flidev_t dev, char *name, long domain)
         return -EIO;
       }
 
-      // do not try to open camera as filter wheel or focuser
+      // try to open only device with correct idProduct
       switch (DEVICE->devinfo.type)
       {
         case FLIDEVICE_CAMERA:
+	  if (usbdesc.idProduct != 0x0002)
+	    return -ENODEV;
           break;
         case FLIDEVICE_FOCUSER:
+	  if (usbdesc.idProduct != 0x0006)
+	    return -ENODEV;
         case FLIDEVICE_FILTERWHEEL:
-          if (usbdesc.idProduct == 0x0002)
+          if (usbdesc.idProduct != 0x0007)
             return -ENODEV;
           break;
       }
