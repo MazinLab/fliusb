@@ -54,7 +54,6 @@
 #include <stdlib.h>
 #include <glob.h>
 #include <sys/ioctl.h>
-#include <linux/usb/ch9.h>
 
 #include "libfli-libfli.h"
 #include "libfli-debug.h"
@@ -66,6 +65,7 @@
 #include "libfli-usb.h"
 #include "libfli-serial.h"
 #include "linux/fliusb_ioctl.h"
+#include "linux/fli-usb.h"
 
 static long unix_fli_list_parport(flidomain_t domain, char ***names);
 static long unix_fli_list_usb(flidomain_t domain, char ***names);
