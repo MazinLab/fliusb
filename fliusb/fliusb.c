@@ -51,7 +51,6 @@
 #include <linux/fs.h>
 #include <linux/fcntl.h>
 #include <asm/uaccess.h>
-#include <asm/semaphore.h>
 
 #ifdef SGREAD
 #include <linux/mm.h>
