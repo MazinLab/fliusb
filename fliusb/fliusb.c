@@ -50,6 +50,7 @@
 #include <linux/usb.h>
 #include <linux/fs.h>
 #include <linux/fcntl.h>
+#include <linux/smp_lock.h>
 #include <asm/uaccess.h>
 
 #ifdef SGREAD
