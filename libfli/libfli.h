@@ -201,6 +201,7 @@ LIBFLIAPI FLIGetModel(flidev_t dev, char* model, size_t len);
 LIBFLIAPI FLIGetPixelSize(flidev_t dev, double *pixel_x, double *pixel_y);
 LIBFLIAPI FLIGetHWRevision(flidev_t dev, long *hwrev);
 LIBFLIAPI FLIGetFWRevision(flidev_t dev, long *fwrev);
+LIBFLIAPI FLIGetDeviceID(flidev_t dev, long *devid);
 LIBFLIAPI FLIGetSerialNum(flidev_t dev, long *serno);
 LIBFLIAPI FLIGetArrayArea(flidev_t dev, long* ul_x, long* ul_y,
 			  long* lr_x, long* lr_y);

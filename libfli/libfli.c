@@ -359,6 +359,28 @@ LIBFLIAPI FLIGetHWRevision(flidev_t dev, long *hwrev)
 }
 
 /**
+   Get the device type.
+
+   @param dev Device to find the hardware revision of.
+
+   @param devid Pointer to a long which will receive the device ID. Expected values are listed in libfli-libfli.h (FLIUSB_PROLINEID..).
+
+   @return Zero on success.
+   @return Non-zero on failure.
+
+   @see FLIGetModel
+   @see FLIGetFWRevision
+   @see FLIGetHWRevision
+*/
+LIBFLIAPI FLIGetDeviceID(flidev_t dev, long *devid)
+{
+  CHKDEVICE(dev);
+
+  *devid = DEVICE->devinfo.devid;
+  return 0;
+}
+
+/**
    Get the serial number of a given device.
 
    @param dev Device to find the hardware revision of.
