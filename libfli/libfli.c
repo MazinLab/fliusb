@@ -407,7 +407,7 @@ LIBFLIAPI FLIGetSerialNum(flidev_t dev, long *serno)
 
    @param dev Device to find the hardware revision of.
 
-   @param devnam Pointer to a long which will receive the serial number.
+   @param devnam Pointer to a char pointer, which will point to device name.
 
    @return Zero on success.
    @return Non-zero on failure.
