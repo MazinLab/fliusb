@@ -403,6 +403,29 @@ LIBFLIAPI FLIGetSerialNum(flidev_t dev, long *serno)
 }
 
 /**
+   Get name of a given device.
+
+   @param dev Device to find the hardware revision of.
+
+   @param devnam Pointer to a long which will receive the serial number.
+
+   @return Zero on success.
+   @return Non-zero on failure.
+
+   @see FLIGetModel
+   @see FLIGetFWRevision
+   @see FLIGetHWRevision
+*/
+
+LIBFLIAPI FLIGetDeviceName(flidev_t dev, const char **devnam)
+{
+  CHKDEVICE(dev);
+
+  *devnam = DEVICE->devinfo.devnam;
+  return 0;
+}
+
+/**
    Get the current library version.  This function copies up to
    \texttt{len - 1} characters of the current library version string
    followed by a terminating \texttt{NULL} character into the buffer
