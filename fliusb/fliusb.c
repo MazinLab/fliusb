@@ -252,7 +252,7 @@ static int fliusb_simple_bulk_read(fliusb_t *dev, unsigned int pipe,
 
   /* a simple blocking bulk read */
   if ((err = usb_bulk_msg(dev->usbdev, pipe, dev->buffer, count, &cnt,
-			  (timeout * HZ + 500) / 1000)))
+			  timeout)))
   {
     cnt = err;
     goto done;
@@ -438,7 +438,7 @@ static int fliusb_bulk_write(fliusb_t *dev, unsigned int pipe,
 
   /* a simple blocking bulk write */
   if ((err = usb_bulk_msg(dev->usbdev, pipe, dev->buffer, count, &cnt,
-			  (timeout * HZ + 500) / 1000)))
+			  timeout)))
   {
     cnt = err;
     // reset USB in case of an error
