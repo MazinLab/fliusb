@@ -859,7 +859,7 @@ static long fli_homedevice(flidev_t dev, long block)
 		}
 		else
 		{
-			DEVICE->io_timeout = 30000;
+			DEVICE->io_timeout = 60000;
 		}
 
 		wlen = 2;
