@@ -1,6 +1,6 @@
 CC	= gcc
 
-INC	= .. $(HOME)/templates /usr/local/include/libpng /usr/pkg/include
+INC	= .. $(HOME)/templates /usr/local/include/libpng /usr/pkg/include $(HOME)/FITSIO/
 
 #CFLAGS	= -Wall -O2 $(patsubst %, -I%, $(INC))
 CFLAGS	= -Wall -g $(patsubst %, -I%, $(INC))
@@ -8,7 +8,7 @@ CFLAGS	+= -DUSEPNG
 CFLAGS	+= -DUSEFITS
 
 LIBS	= fli png cfitsio
-LIBPATH	= .. /usr/local/lib /usr/pkg/lib
+LIBPATH	= .. /usr/local/lib /usr/pkg/lib /home/wildi/FITSIO/cfitsio
 LDLIBS	= $(patsubst %, -l%, $(LIBS))
 LOADLIBES= $(patsubst %, -L%, $(LIBPATH))
 

@@ -52,6 +52,8 @@
 #include <linux/fcntl.h>
 #include <linux/smp_lock.h>
 #include <asm/uaccess.h>
+#include <linux/slab.h>
+
 
 #ifdef SGREAD
 #include <linux/mm.h>
@@ -374,7 +376,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
 
   if (dev->usbsg.sgreq.status)
   {
-    FLIUSB_ERR("bulk read error %d; transfered %d bytes",
+    FLIUSB_ERR("bulk read error %d; transfered %zd bytes",
 	       dev->usbsg.sgreq.status, dev->usbsg.sgreq.bytes);
     err = dev->usbsg.sgreq.status;
     goto done;
