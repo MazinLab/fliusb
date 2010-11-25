@@ -48,18 +48,23 @@
 #include "libfli-sys.h"
 #include <winioctl.h>
 #include "libfli-usb.h"
-#include "ezusbsys.h"
+//#include "ezusbsys.h"
 #include "stdio.h"
-
-#define _DEBUG_IO
 
 static LARGE_INTEGER time = { -1 };
 
 long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 {
-	BULK_TRANSFER_CONTROL pipe = { (-1) };
+#ifdef OLDUSBDRIVER
+//	BULK_TRANSFER_CONTROL pipe = { (-1) };
+	ULONG pipe = (-1);
+	int i;
+#else
+	FLI_USB_EPIO epio;
+#endif
+
 	unsigned long ioctl_code;
-	int i, abort = 0;
+	int abort = 0, retries = 5;
 	DWORD retval = 0;
 	long tlen = 0, total = 0;
 
@@ -68,26 +73,39 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 	double dtime;
 #endif
 
-	for (i = 0; (pipe.pipeNum == (-1)) && (i < USB_MAX_PIPES); i++)
+#ifdef OLDUSBDRIVER
+//	for (i = 0; (pipe.pipeNum == (-1)) && (i < USB_MAX_PIPES); i++)
+	for (i = 0; (pipe == (-1)) && (i < USB_MAX_PIPES); i++)
 	{
 		if (((fli_io_t *)DEVICE->io_data)->endpointlist[i] == ep)
-			pipe.pipeNum = i;
+//			pipe.pipeNum = i;
+			pipe = i;
 	}
 
-	if (pipe.pipeNum == (-1))
+//	if (pipe.pipeNum == (-1))
+	if (pipe == (-1))
 	{
 		debug(FLIDEBUG_FAIL, "Requested endpoint 0x%02x not found.", ep);
 		return -EIO;
 	}
 
 #ifdef _DEBUG_IO
-	debug(FLIDEBUG_INFO, "Got PIPE %d for endpoint 0x%02x.", pipe.pipeNum, ep);
+//	debug(FLIDEBUG_IO, "Got PIPE %d for endpoint 0x%02x.", pipe.pipeNum, ep);
 #endif
 
 	if ((ep & 0x80) == 0)
-		ioctl_code = IOCTL_EZUSB_BULK_WRITE;
+		ioctl_code = IOCTL_BULK_WRITE;
 	else
-		ioctl_code = IOCTL_EZUSB_BULK_READ;
+		ioctl_code = IOCTL_BULK_READ;
+#else
+		if ((ep & 0x80) == 0)
+		ioctl_code = IOCTL_BULK_WRITE;
+	else
+		ioctl_code = IOCTL_BULK_READ;
+
+	epio.Endpoint = ep;
+	epio.Timeout = 60000;
+#endif
 
 #ifdef _DEBUG_IO
 
@@ -110,10 +128,11 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 
 #define MOD_USB
 #ifdef MOD_USB
-	while ( (total < *len) && (abort == 0) )
+	while ( (total < *len) && (abort == 0) && (retries > 0))
 	{
 		tlen = 0;
 
+#ifdef OLDUSBDRIVER		
 		retval = DeviceIoControl(((fli_io_t *)DEVICE->io_data)->fd,
 														 ioctl_code,
 														 &pipe,
@@ -122,10 +141,18 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 														 *len - total,
 														 &tlen,
 														 NULL);
+#else
+		retval = DeviceIoControl(((fli_io_t *)DEVICE->io_data)->fd,
+														 ioctl_code,
+														 &epio,
+														 sizeof(epio),
+														 (unsigned char *) buf + total,
+														 *len - total,
+														 &tlen,
+														 NULL);
+#endif
 
 		total += tlen; /* Update our length transferred */
-
-		debug(FLIDEBUG_WARN, "    Retval: %d", retval);
 
 		/* Check for error status */
 		if (retval == 0)
@@ -142,7 +169,7 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 			DWORD iolen;
 
 			DeviceIoControl(((fli_io_t *)DEVICE->io_data)->fd,
-											IOCTL_EZUSB_GET_LAST_ERROR,
+											IOCTL_GET_LAST_USBD_ERROR,
 											NULL,
 											0,
 											&urb_status,
@@ -150,15 +177,38 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 											&iolen,
 											NULL);
 
-			debug(FLIDEBUG_WARN, "    URB status: 0x%08x", urb_status);
+			debug(FLIDEBUG_WARN, "URB status:0x%08x ep:%02x t:%d l:%d  ", urb_status, ep, total, *len);
+
+			retries --;
 			switch (urb_status)
 			{
 				case 0xC0000011:
 					debug(FLIDEBUG_WARN, "    USBD_STATUS_XACT_ERROR, retrying...");
+					OutputDebugString("\n");
+					Sleep(50);
 					break;
 
 				case 0xC0000012:
 					debug(FLIDEBUG_WARN, "    USBD_STATUS_BABBLE_DETECTED, retrying...");
+					OutputDebugString("\n");
+					Sleep(50);
+					break;
+
+				case 0x00000000:
+#ifdef BAD_CABLE_HACK
+					if ( (total % 512) != 0)
+					{
+						char b[2048];
+						sprintf(b, "P:%d\n", 512 - (total % 512));
+						OutputDebugString(b);
+						memset((unsigned char *) buf + total, 0x00, 512 - (total % 512));
+						total += 512 - (total % 512);
+					}
+					else
+#endif
+					{
+						abort = 1;
+					}
 					break;
 
 				default:
@@ -234,12 +284,12 @@ long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 	}
 
 	dtime = ((double) etime.QuadPart - (double) btime.QuadPart ) / (double) freq.QuadPart;
-	debug(FLIDEBUG_INFO, "    ret:%02x len:%04x dtime:%09.6f",
+	debug(FLIDEBUG_INFO, "   ret:%02x len:%04x dtime:%09.6f",
 		retval, tlen, dtime);
 #endif /* _DEBUG_IO */
 
 	*len = tlen;
-	return (retval == 0)?-EIO:0;
+	return ((retval == 0) || (retries <= 0))?-EIO:0;
 }
 
 long usbio(flidev_t dev, void *buf, long *wlen, long *rlen)
@@ -309,4 +359,4 @@ long usbio(flidev_t dev, void *buf, long *wlen, long *rlen)
 
   return err;
 }
-
+

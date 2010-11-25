@@ -51,7 +51,7 @@
 #endif /* LIBFLIAPI */
 
 #define __SYSNAME__ "Windows"
-#define __LIBFLI_MINOR__ 57
+#define __LIBFLI_MINOR__ 99
 
 #define snprintf _snprintf
 

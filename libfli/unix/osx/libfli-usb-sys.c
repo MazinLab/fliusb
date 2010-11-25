@@ -45,7 +45,12 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <linux/fli-usb.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14))
+#include <usb.h>
+#include <linux/usb.h>
+#else
+#include <linux/usb_ch9.h>
+#endif
 
 #include <linux/usbdevice_fs.h>
 #include <sys/ioctl.h>
@@ -55,14 +60,12 @@
 
 #include "libfli-libfli.h"
 #include "libfli-sys.h"
-#include "libfli-mem.h"
 #include "libfli-usb.h"
 #include "fliusb_ioctl.h"
 
 long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
 {
   struct usb_device_descriptor usbdesc;
-  fliusb_string_descriptor_t strdesc; 
   int confg, r;
 
   if (ioctl(io->fd, FLIUSB_GET_DEVICE_DESCRIPTOR, &usbdesc) == -1)
@@ -95,17 +98,6 @@ long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
   DEVICE->devinfo.devid = usbdesc.idProduct;
   DEVICE->devinfo.fwrev = usbdesc.bcdDevice;
 
-  strdesc.index = 3;
-  if (ioctl(io->fd, FLIUSB_GET_STRING_DESCRIPTOR, &strdesc) != 0)
-  {
-    debug(FLIDEBUG_FAIL, "%s: Could not read descriptor: %s",
-	  __PRETTY_FUNCTION__, strerror(errno));
-  }
-  else
-  {
-    DEVICE->devinfo.serial = xstrndup(strdesc.buf, sizeof(strdesc.buf));
-  }
-  
   confg = 0;
   r = ioctl (io->fd, USBDEVFS_SETCONFIGURATION, &confg);
   debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION return %i", r);

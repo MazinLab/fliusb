@@ -124,7 +124,6 @@ static long fli_open(flidev_t *dev, char *name, long domain)
 {
   int retval;
 
-  debug(FLIDEBUG_INFO, "Entering FLIOpen()");
   debug(FLIDEBUG_INFO, "Trying to open file <%s> in domain %d.",
 	name, domain);
 
@@ -186,12 +185,33 @@ static long fli_freelist(char **names)
 }
 
 /* This is for FLI INTERNAL USE ONLY */
-#ifdef WIN32
+#ifdef _WIN32
 long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 #else
 long linux_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 #define usb_bulktransfer linux_bulktransfer
 #endif
+
+LIBFLIAPI FLIStartVideoMode(flidev_t dev)
+{
+  CHKDEVICE(dev);
+
+  return DEVICE->fli_command(dev, FLI_START_VIDEO_MODE, 0);
+}
+
+LIBFLIAPI FLIStopVideoMode(flidev_t dev)
+{
+  CHKDEVICE(dev);
+
+  return DEVICE->fli_command(dev, FLI_STOP_VIDEO_MODE, 0);
+}
+
+LIBFLIAPI FLIGrabVideoFrame(flidev_t dev, void *buff, size_t size)
+{
+  CHKDEVICE(dev);
+
+  return DEVICE->fli_command(dev, FLI_GRAB_VIDEO_FRAME, 2, buff, &size);
+}
 
 LIBFLIAPI FLIUsbBulkIO(flidev_t dev, int ep, void *buf, long *len)
 {
@@ -202,7 +222,7 @@ LIBFLIAPI FLIUsbBulkIO(flidev_t dev, int ep, void *buf, long *len)
 LIBFLIAPI FLIGrabFrame(flidev_t dev, void* buff,
 		       size_t buffsize, size_t* bytesgrabbed)
 {
-	return -EFAULT;
+	return -EINVAL;
 }
 
 /**
@@ -1724,3 +1744,15 @@ LIBFLIAPI FLIListNext(flidomain_t *domain, char *filename,
   currentdevice = currentdevice->next;
   return 0;
 }
+
+LIBFLIAPI FLISetFanSpeed(flidev_t dev, long fan_speed)
+{
+	long r;
+
+	CHKDEVICE(dev);
+
+	r = DEVICE->fli_command(dev, FLI_SET_FAN_SPEED, 1, &fan_speed);
+
+	return r;
+}
+

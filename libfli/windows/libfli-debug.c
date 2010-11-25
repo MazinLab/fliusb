@@ -14,8 +14,6 @@ static int _level = 0;
 static int _forced = 0;
 static char *_debugfile = NULL;
 
-#define _DEBUGSTRING
-
 int debugclose(void)
 {
 	if(_debugfile != NULL)
@@ -106,7 +104,7 @@ void debug(int level, char *format, ...)
 			{
 				DWORD bytes;
 				SetFilePointer(dfile, 0, NULL, FILE_END);
-				WriteFile(dfile, output, strlen(output), &bytes, NULL);
+				WriteFile(dfile, output, (DWORD) strlen(output), &bytes, NULL);
 				CloseHandle(dfile);
 			}
 		}

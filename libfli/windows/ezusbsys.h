@@ -12,163 +12,7 @@
 // $Author: Markm $
 //
 // $History: ezusbsys.h $           
-//  
-//  *****************  Version 29  *****************
-//  User: Markm        Date: 5/18/99    Time: 3:37p
-//  Updated in $/EzUsb/Drivers/ezusbdrv
-//  
-//  *****************  Version 28  *****************
-//  User: Markm        Date: 2/23/99    Time: 9:50a
-//  Updated in $/EzUsb/Drivers/ezusbdrv
-//  Driver now supports ISO IN streaming with a path to user mode.
-//  
-//  *****************  Version 27  *****************
-//  User: Markm        Date: 2/10/99    Time: 3:32p
-//  Updated in $/EzUsb/Drivers/ezusbdrv
-//  removed lots of unused protoypes and structures.  Added ring buffer
-//  support functions.
-//  
-//  *****************  Version 26  *****************
-//  User: Markm        Date: 2/01/99    Time: 11:57a
-//  Updated in $/EzUsb/Drivers/ezusbdrv
-//  Added preliminary support for ISO streaming.
-//  
-//  *****************  Version 25  *****************
-//  User: Tpm          Date: 10/19/98   Time: 3:45p
-//  Updated in $/EzUsb/Examples/CTst
-//  Fix RMA#1 bug: side B fails renum.
-//  
-//  *****************  Version 24  *****************
-//  User: Tpm          Date: 10/01/98   Time: 11:51p
-//  Updated in $/EzUsb/Examples/Unsupported/EzMr
-//  Apply Tim's Comments.
-//  
-//  *****************  Version 23  *****************
-//  User: Tpm          Date: 6/26/98    Time: 10:27a
-//  Updated in $/EzUsb/Examples/EzMr
-//  Set Version.
-//  
-//  *****************  Version 22  *****************
-//  User: Tpm          Date: 6/26/98    Time: 5:41a
-//  Updated in $/EzUsb/Examples/EzMr
-//  Pre-Build.
-//  
-//  *****************  Version 21  *****************
-//  User: Tpm          Date: 6/26/98    Time: 4:01a
-//  Updated in $/EzUsb/Examples/CTst
-//  Clean Build.
-//  
-//  *****************  Version 20  *****************
-//  User: Tpm          Date: 6/26/98    Time: 2:41a
-//  Updated in $/EzUsb/Examples/EzMr
-//  Clean Build.
-//  
-//  *****************  Version 19  *****************
-//  User: Tpm          Date: 6/25/98    Time: 1:09p
-//  Updated in $/EzUsb/EzMr
-//  Add Headers.
-//  
-//  *****************  Version 18  *****************
-//  User: Tpm          Date: 6/25/98    Time: 10:50a
-//  Updated in $/EzUsb/EzMr
-//  REL1.1.
-//  
-//  *****************  Version 17  *****************
-//  User: Markm        Date: 4/09/98    Time: 3:01p
-//  Updated in $/EZUSB/ezusb driver
-//  Added stuff to support download of Intel Hex records.
-//  
-//  *****************  Version 16  *****************
-//  User: Markm        Date: 4/07/98    Time: 1:53p
-//  Updated in $/EZUSB/ezusb driver
-//  Added IOCTL_EZUSB_GET_DRIVER_VERSION
-//  
-//  *****************  Version 15  *****************
-//  User: Markm        Date: 4/06/98    Time: 4:27p
-//  Updated in $/EZUSB/ezusb driver
-//  Modified ISO transfer code.
-//  * Transfer descriptors for the ISO transfer are now sent up to the
-//  caller along with the actual data, so the caller can get the status of
-//  the transfer on a packet-by-packet basis. 
-//  * Disabled default values.  Caller must specify all fields in the ISO
-//  control structure.
-//  * Corrected bug where the Stream and Transfer objects weren't being
-//  freed.
-//  
-//  Added some code to measure the latency of a bulk transfer.
-//  
-//  *****************  Version 14  *****************
-//  User: Markm        Date: 3/19/98    Time: 10:13a
-//  Updated in $/EZUSB/ezusb driver
-//  Added IOCTL_EZUSB_ANCHOR_DOWNLOAD to support A0 loads to a specific
-//  memory offset.
-//  
-//  *****************  Version 13  *****************
-//  User: Markm        Date: 2/26/98    Time: 4:05p
-//  Updated in $/EZUSB/ezusb driver
-//  Added protoypes for anchor download and 8051 reset functions.
-//  Added firmware structure definition.
-//  Added some EZ-USB register defines.
-//  
-//  *****************  Version 11  *****************
-//  User: Markm        Date: 2/11/98    Time: 9:51a
-//  Updated in $/EZUSB/ezusb driver
-//  Added an open file handle count to the device extension.
-//  
-//  *****************  Version 10  *****************
-//  User: Markm        Date: 2/02/98    Time: 3:36p
-//  Updated in $/EZUSB/ezusb driver
-//  Added protypes for new functions
-//  
-//  *****************  Version 9  *****************
-//  User: Markm        Date: 1/27/98    Time: 11:37a
-//  Updated in $/EZUSB/ezusb driver
-//  Added members to the ISO stream object to allow for user specified
-//  transfer parameters.
-//  
-//  *****************  Version 8  *****************
-//  User: Markm        Date: 1/22/98    Time: 11:52a
-//  Updated in $/EZUSB/ezusb driver
-//  removed unused code.
-//  added IOCTL's for ISO loopback/read/write
-//  
-//  *****************  Version 7  *****************
-//  User: Markm        Date: 1/18/98    Time: 3:18p
-//  Updated in $/EZUSB/ezusb driver
-//  Added new IOCTL's.  Added members to the device extension to support
-//  robust device removal.
-//  
-//  *****************  Version 6  *****************
-//  User: Markm        Date: 1/14/98    Time: 10:30a
-//  Updated in $/EZUSB/ezusb driver
-//  Added IOCTL's  for handling bulk transfers.
-//  
-//  *****************  Version 5  *****************
-//  User: Markm        Date: 1/02/98    Time: 1:41p
-//  Updated in $/EZUSB/ezusb driver
-//  Added support for setting the interface, preliminary code for naming
-//  pipes, get string descriptor
-//  
-//  *****************  Version 4  *****************
-//  User: Markm        Date: 11/18/97   Time: 3:21p
-//  Updated in $/EZUSB/ezusb driver
-//  added abort pipe IOCTL
-//  
-//  *****************  Version 3  *****************
-//  User: Markm        Date: 11/14/97   Time: 4:31p
-//  Updated in $/EZUSB/ezusb driver
-//  added code to experiment wth different methods of switiching
-//  interfaces.
-//  
-//  *****************  Version 2  *****************
-//  User: Markm        Date: 11/07/97   Time: 1:21p
-//  Updated in $/EZUSB/ezusb driver
-//  Added Reset Pipe IOCTL
-//  
-// Copyright (c) 1997 Anchor Chips, Inc.  May not be reproduced without
-// permission.  See the license agreement for more details.
-//
-//////////////////////////////////////////////////////////////////////
+
 
 #ifndef __ezusbsys_h__
 #define __ezusbsys_h__
@@ -216,103 +60,6 @@ typedef struct _VENDOR_REQUEST_IN
     BYTE    direction;
     BYTE    bData;
 } VENDOR_REQUEST_IN, *PVENDOR_REQUEST_IN;
-
-///////////////////////////////////////////////////////////
-//
-// control structure for bulk and interrupt data transfers
-//
-///////////////////////////////////////////////////////////
-typedef struct _BULK_TRANSFER_CONTROL
-{
-   ULONG pipeNum;
-} BULK_TRANSFER_CONTROL, *PBULK_TRANSFER_CONTROL;
-
-typedef struct _BULK_LATENCY_CONTROL
-{
-   ULONG bulkPipeNum;
-   ULONG intPipeNum;
-   ULONG loops;
-} BULK_LATENCY_CONTROL, *PBULK_LATENCY_CONTROL;
-
-
-///////////////////////////////////////////////////////////
-//
-// control structure isochronous loopback test
-//
-///////////////////////////////////////////////////////////
-typedef struct _ISO_LOOPBACK_CONTROL
-{
-   // iso pipe to write to
-   ULONG outPipeNum;
-
-   // iso pipe to read from
-   ULONG inPipeNum;
-
-   // amount of data to read/write from/to the pipe each frame.  If not
-   // specified, the MaxPacketSize of the out pipe is used.
-   ULONG packetSize;
-
-} ISO_LOOPBACK_CONTROL, *PISO_LOOPBACK_CONTROL;
-
-///////////////////////////////////////////////////////////
-//
-// control structure for sending vendor or class specific requests
-// to the control endpoint.
-//
-///////////////////////////////////////////////////////////
-typedef struct _VENDOR_OR_CLASS_REQUEST_CONTROL
-{
-   // transfer direction (0=host to device, 1=device to host)
-   UCHAR direction;
-
-   // request type (1=class, 2=vendor)
-   UCHAR requestType;
-
-   // recipient (0=device,1=interface,2=endpoint,3=other)
-   UCHAR recepient;
-   //
-   // see the USB Specification for an explanation of the
-   // following paramaters.
-   //
-   UCHAR requestTypeReservedBits;
-   UCHAR request;
-   USHORT value;
-   USHORT index;
-} VENDOR_OR_CLASS_REQUEST_CONTROL, *PVENDOR_OR_CLASS_REQUEST_CONTROL;
-
-///////////////////////////////////////////////////////////
-//
-// control structure for isochronous data transfers
-//
-///////////////////////////////////////////////////////////
-typedef struct _ISO_TRANSFER_CONTROL
-{
-   //
-   // pipe number to perform the ISO transfer to/from.  Direction is
-   // implied by the pipe number.
-   //
-   ULONG PipeNum;
-   //
-   // ISO packet size.  Determines how much data is transferred each
-   // frame.  Should be less than or equal to the maxpacketsize for
-   // the endpoint.
-   //
-   ULONG PacketSize;
-   //
-   // Total number of ISO packets to transfer.
-   //
-   ULONG PacketCount;
-   //
-   // The following two parameters detmine how buffers are managed for
-   // an ISO transfer.  In order to maintain an ISO stream, the driver
-   // must create at least 2 transfer buffers and ping pong between them.
-   // BufferCount determines how many buffers the driver creates to ping
-   // pong between.  FramesPerBuffer specifies how many USB frames of data
-   // are transferred by each buffer.
-   //
-   ULONG FramesPerBuffer;     // 10 is a good value
-   ULONG BufferCount;         // 2 is a good value
-} ISO_TRANSFER_CONTROL, *PISO_TRANSFER_CONTROL;
 
 
 ///////////////////////////////////////////////////////////
@@ -931,7 +678,7 @@ NTSTATUS Ezusb_StartIsoStream(
 //    the size of the USB transfer.
 // lpBytesReturned: actual number of bytes read
 // 
-#define IOCTL_EZUSB_BULK_READ             CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+#define IOCTL_BULK_READ             CTL_CODE(FILE_DEVICE_UNKNOWN,  \
                                                    Ezusb_IOCTL_INDEX+19,\
                                                    METHOD_OUT_DIRECT,  \
                                                    FILE_ANY_ACCESS)
@@ -946,7 +693,7 @@ NTSTATUS Ezusb_StartIsoStream(
 //    the size of the USB transfer.
 // lpBytesReturned: actual number of bytes written
 // 
-#define IOCTL_EZUSB_BULK_WRITE            CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+#define IOCTL_BULK_WRITE            CTL_CODE(FILE_DEVICE_UNKNOWN,  \
                                                    Ezusb_IOCTL_INDEX+20,\
                                                    METHOD_IN_DIRECT,  \
                                                    FILE_ANY_ACCESS)
@@ -1003,7 +750,7 @@ NTSTATUS Ezusb_StartIsoStream(
 // nOutputBufferSize: sizeof(ULONG)
 // 
 
-#define IOCTL_EZUSB_GET_LAST_ERROR   CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+#define IOCTL_GET_LAST_USBD_ERROR   CTL_CODE(FILE_DEVICE_UNKNOWN,  \
                                                    Ezusb_IOCTL_INDEX+23,\
                                                    METHOD_BUFFERED,  \
                                                    FILE_ANY_ACCESS)

@@ -52,14 +52,40 @@
 
 #define USB_READ_SIZ_MAX (65535)
 
-#include "ezusbsys.h"
+typedef struct fli_usb_epio_t
+{
+	WORD Endpoint; /* USB Endpoint */
+	DWORD Timeout; /* USB I/O Timeout in mSec */
+} FLI_USB_EPIO, *PFLI_USB_EPIO;
 
 long usb_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 long usbio(flidev_t dev, void *buf, long *wlen, long *rlen);
 
-/* Stuff included from ezusb stuff...
-   Don't know why it wasn't included with ezusbsys.h... */
+/* Legacy stuff to work with old driver */
+typedef struct _FLI_PIPE_INFORMATION {
+	USHORT MaximumPacketSize;
+	UCHAR EndpointAddress;
+	UCHAR Interval;
+	UCHAR PipeType;
+	DWORD PipeHandle; /* This is a pointer, causes problems in 64 bit driver */
+	ULONG MaximumTransferSize;
+	ULONG PipeFlags;                                   
+} FLI_PIPE_INFORMATION, *PFLI_PIPE_INFORMATION;
 
+typedef struct _FLI_INTERFACE_INFORMATION {
+	USHORT Length;
+	UCHAR InterfaceNumber;
+	UCHAR AlternateSetting;
+	UCHAR Class;
+	UCHAR SubClass;
+	UCHAR Protocol;
+	UCHAR Reserved;
+	DWORD InterfaceHandle;
+	ULONG NumberOfPipes; 
+	FLI_PIPE_INFORMATION Pipes[1];
+} FLI_INTERFACE_INFORMATION, *PFLI_INTERFACE_INFORMATION;
+
+/* USB Descriptor (from DDK) */
 typedef struct __usb_Dev_Descriptor__ {
     UCHAR bLength;
     UCHAR bDescriptorType;
@@ -77,50 +103,60 @@ typedef struct __usb_Dev_Descriptor__ {
     UCHAR bNumConfigurations;
 } Usb_Device_Descriptor, *pUsb_Device_Descriptor;
 
-typedef struct __usb_Config_Descriptor__ {
-    UCHAR bLength;
-    UCHAR bDescriptorType;
-    USHORT wTotalLength;
-    UCHAR bNumInterfaces;
-    UCHAR bConfigurationValue;
-    UCHAR iConfiguration;
-    UCHAR bmAttributes;
-    UCHAR MaxPower;
-} Usb_Configuration_Descriptor, *pUsb_Configuration_Descriptor;
+/* Taken initially from EZUSB before driver was rewritten */
+typedef struct _GET_STRING_DESCRIPTOR_IN
+{
+   UCHAR    Index;
+   USHORT   LanguageId;
+} GET_STRING_DESCRIPTOR_IN, *PGET_STRING_DESCRIPTOR_IN;
+
+#define IOCTL_GET_DEVICE_DESCRIPTOR CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+	0x0800 + 1,\
+	METHOD_BUFFERED,  \
+	FILE_ANY_ACCESS)
+
+#define IOCTL_BULK_READ CTL_CODE(FILE_DEVICE_UNKNOWN, \
+	0x0800 + 19,\
+	METHOD_OUT_DIRECT,  \
+	FILE_ANY_ACCESS)
+
+#define IOCTL_BULK_WRITE CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+	0x0800 + 20,\
+	METHOD_IN_DIRECT,  \
+	FILE_ANY_ACCESS)
+
+#define IOCTL_GET_LAST_USBD_ERROR CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+	0x0800 + 23,\
+	METHOD_BUFFERED,  \
+	FILE_ANY_ACCESS)
+
+#define IOCTL_GET_STRING_DESCRIPTOR CTL_CODE(FILE_DEVICE_UNKNOWN,  \
+	0x0800 + 17,\
+	METHOD_BUFFERED,  \
+	FILE_ANY_ACCESS)
+
+#ifdef OLDUSBDRIVER
 
 typedef PVOID USBD_PIPE_HANDLE;
 typedef PVOID USBD_CONFIGURATION_HANDLE;
 typedef PVOID USBD_INTERFACE_HANDLE;
 
 typedef enum _USBD_PIPE_TYPE {
-    UsbdPipeTypeControl,
-    UsbdPipeTypeIsochronous,
-    UsbdPipeTypeBulk,
-    UsbdPipeTypeInterrupt
+	UsbdPipeTypeControl,
+	UsbdPipeTypeIsochronous,
+	UsbdPipeTypeBulk,
+	UsbdPipeTypeInterrupt
 } USBD_PIPE_TYPE;
 
 typedef struct _USBD_PIPE_INFORMATION {
-    //
-    // OUTPUT
-    // These fields are filled in by USBD
-    //
-    USHORT MaximumPacketSize;  // Maximum packet size for this pipe
-    UCHAR EndpointAddress;     // 8 bit USB endpoint address (includes direction)
-                               // taken from endpoint descriptor
-    UCHAR Interval;            // Polling interval in ms if interrupt pipe 
-    
-    USBD_PIPE_TYPE PipeType;   // PipeType identifies type of transfer valid for this pipe
-    USBD_PIPE_HANDLE PipeHandle;
-    
-    //
-    // INPUT
-    // These fields are filled in by the client driver
-    //
-    ULONG MaximumTransferSize; // Maximum size for a single request
-                               // in bytes.
-    ULONG PipeFlags;                                   
+	USHORT MaximumPacketSize;
+	UCHAR EndpointAddress;
+	UCHAR Interval;
+	USBD_PIPE_TYPE PipeType;
+	USBD_PIPE_HANDLE PipeHandle;
+	ULONG MaximumTransferSize;
+	ULONG PipeFlags;                                   
 } USBD_PIPE_INFORMATION, *PUSBD_PIPE_INFORMATION;
-
 
 typedef struct _USBD_INTERFACE_INFORMATION {
     USHORT Length;       // Length of this structure, including
@@ -154,6 +190,6 @@ typedef struct _USBD_INTERFACE_INFORMATION {
     USBD_PIPE_INFORMATION Pipes[1];
 
 } USBD_INTERFACE_INFORMATION, *PUSBD_INTERFACE_INFORMATION;
-
+#endif
 
 #endif /* _LIBFLI_UNIX_USB_H_ */

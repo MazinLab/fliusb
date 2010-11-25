@@ -65,7 +65,7 @@
 #include "fliusb.h"
 #include "fliusb_ioctl.h"
 
-MODULE_AUTHOR("Finger Lakes Instrumentation, L.L.C. <support@fli-cam.com>");
+MODULE_AUTHOR("Finger Lakes Instrumentation, L.L.C. <support@flicamera.com>");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_VERSION("1.1");
 
@@ -574,8 +574,10 @@ static int fliusb_ioctl(struct inode *inode, struct file *file,
     u_int8_t uint8;
     unsigned int uint;
     fliusb_bulktransfer_t bulkxfer;
+    fliusb_string_descriptor_t strdesc;
   } tmp;
   unsigned int tmppipe;
+  int err;
 
   FLIUSB_DBG("cmd: %p; arg: %p", (void *)cmd, (void *)arg);
 
@@ -678,6 +680,26 @@ static int fliusb_ioctl(struct inode *inode, struct file *file,
     if (__copy_to_user((void *)arg, &dev->usbdev->descriptor,
 		     sizeof(struct usb_device_descriptor)))
       return -EFAULT;
+    return 0;
+    break;
+
+  case FLIUSB_GET_STRING_DESCRIPTOR:
+    if (__copy_from_user(&tmp.strdesc, (fliusb_string_descriptor_t __user *)arg,
+			 sizeof(fliusb_string_descriptor_t)))
+      return -EFAULT;
+    
+    memset(tmp.strdesc.buf, 0, sizeof(tmp.strdesc.buf));
+    
+    if ((err = usb_string(dev->usbdev, tmp.strdesc.index,
+			tmp.strdesc.buf, sizeof(tmp.strdesc.buf))) < 0)
+      FLIUSB_WARN("usb_string() failed: %d", err);
+    
+    if (__copy_to_user((void *)arg, &tmp.strdesc,
+		     sizeof(fliusb_string_descriptor_t)))
+    {
+      return -EFAULT;
+    }
+    
     return 0;
     break;
 

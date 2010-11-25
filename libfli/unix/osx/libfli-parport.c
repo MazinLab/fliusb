@@ -41,16 +41,93 @@
 
 */
 
-#ifndef _LIBFLI_DEBUG_H_
-#define _LIBFLI_DEBUG_H_
+#include <sys/ioctl.h>
+#include <asm/param.h>
 
-#define _DEBUGSTRING
-#define _DEBUG_IO
+#include <errno.h>
+#include <unistd.h>
 
-/* Debug functions */
-int debugclose(void);
-int debugopen(char *host);
-void debug(int level, char *format, ...);
-void setdebuglevel(char *host, int level);
+#include "libfli-libfli.h"
+#include "libfli-debug.h"
+#include "libfli-camera.h"
 
-#endif /* _LIBFLI_DEBUG_H_ */
+#include "fli_ioctl.h"
+
+long unix_parportio_linux(flidev_t dev, void *buf, long *wlen, long *rlen)
+{
+  fli_unixio_t *io;
+  flicamdata_t *cam;
+  int err = 0, locked = 0;
+  long org_wlen = *wlen, org_rlen = *rlen;
+  int wto, rto, dto;
+
+  io = DEVICE->io_data;
+  cam = DEVICE->device_data;
+
+  if ((err = unix_fli_lock(dev)))
+  {
+    debug(FLIDEBUG_WARN, "Lock failed");
+    goto done;
+  }
+
+  locked = 1;
+
+  /* Convert timeout to jiffies */
+  wto = cam->writeto / 1000 * HZ;
+  rto = cam->readto / 1000 * HZ;
+  dto = cam->dirto / 1000 * HZ;
+
+  if (ioctl(io->fd, FLI_SET_WTO, &wto))
+  {
+    err = -errno;
+    goto done;
+  }
+
+  if (ioctl(io->fd, FLI_SET_DTO, &dto))
+  {
+    err = -errno;
+    goto done;
+  }
+
+  if (ioctl(io->fd, FLI_SET_RTO, &rto))
+  {
+    err = -errno;
+    goto done;
+  }
+
+  if (*wlen > 0)
+  {
+    if ((*wlen = write(io->fd, buf, *wlen)) != org_wlen)
+    {
+      debug(FLIDEBUG_WARN, "write failed, only %d of %d bytes written",
+	    *wlen, org_wlen);
+      err = -errno;
+      goto done;
+    }
+  }
+
+  if (*rlen > 0)
+  {
+    if ((*rlen = read(io->fd, buf, *rlen)) != org_rlen)
+    {
+      debug(FLIDEBUG_WARN, "read failed, only %d of %d bytes read",
+	    *rlen, org_rlen);
+      err = -errno;
+      goto done;
+    }
+  }
+
+ done:
+
+  if (locked)
+  {
+    int r;
+
+    if ((r = unix_fli_unlock(dev)))
+      debug(FLIDEBUG_WARN, "Unlock failed");
+    if (err == 0)
+      err = r;
+  }
+
+  return err;
+}

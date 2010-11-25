@@ -45,6 +45,7 @@
 #include <stdio.h>
 #include <winioctl.h>
 #include <errno.h>
+//#include <conio.h>
 
 #include "../libfli-libfli.h"
 #include "../libfli-debug.h"

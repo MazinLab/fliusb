@@ -50,19 +50,16 @@
 #include "../libfli-debug.h"
 #include "../libfli-mem.h"
 #include "../libfli-camera.h"
+#include "../libfli-raw.h"
 #include "../libfli-filter-focuser.h"
 #include "libfli-sys.h"
 #include "libfli-parport.h"
 #include "libfli-usb.h"
 #include "libfli-serial.h"
-#include "ezusbsys.h"
+//#include "ezusbsys.h"
 
-#define MAX_SEARCH 32
+#define MAX_SEARCH 16
 #define MAX_SEARCH_DIGITS 3
-
-#ifndef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
 
 static WSADATA WSAData;
 static short WSEnabled;
@@ -71,7 +68,30 @@ static OSVERSIONINFO OSVersionInfo;
 static long OS = 0;
 
 extern LARGE_INTEGER dlltime;
+static long fli_resolve_serial_number(char **filename, char *serial, flidomain_t domain);
 
+#ifndef SERVICE_MATCH
+#define SERVICE_MATCH { \
+		if (stricmp(pBuffer, "fliusb") == 0) match ++; \
+		if (stricmp(pBuffer, "reltusb") == 0) match ++; \
+		if (stricmp(pBuffer, "pslcamusb") == 0) match ++; \
+	}
+
+#define FN_MATCH ( \
+	(_strnicmp(name, "fci", 3) == 0) || \
+	(_strnicmp(name, "psl", 3) == 0) || \
+	(_strnicmp(name, "rel", 3) == 0) || \
+	(_strnicmp(name, "fli", 3) == 0) || \
+	(_strnicmp(name, "ccd", 3) == 0) \
+	)
+
+#define LIST_USB_CAM_PREFIX_LIST "flipro,flicam,pslcam,fcicam,reltcam-"
+#define LIST_USB_FOCUSER_PREFIX_LIST "flifoc"
+#define LIST_USB_FILTER_PREFIX_LIST "flifil"
+
+#endif
+
+#ifndef STATICLIBRARY
 BOOL APIENTRY DllMain( HANDLE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved )
@@ -129,6 +149,54 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 
   return TRUE;
 }
+#else
+
+LIBFLIAPI FLILibAttach(void)
+{
+	QueryPerformanceCounter(&dlltime);
+	WSEnabled = 0;
+	if (WSAStartup(MAKEWORD(1, 1), &WSAData) == 0)
+	{
+		WSEnabled = 1;
+	}
+
+	//if(GetFileAttributes("C:\\FLIDBG.TXT") != (-1))
+	//{
+	//	FLISetDebugLevel("C:\\FLIDBG.TXT", FLIDEBUG_ALL);
+	//}
+
+	OSVersionInfo.dwOSVersionInfoSize=sizeof(OSVERSIONINFO);
+	if(GetVersionEx(&OSVersionInfo)==0)
+		return 0;
+
+	switch (OSVersionInfo.dwPlatformId)
+	{
+		case VER_PLATFORM_WIN32_WINDOWS:
+			OS = VER_PLATFORM_WIN32_WINDOWS;
+			break;
+
+		case VER_PLATFORM_WIN32_NT:
+			OS = VER_PLATFORM_WIN32_NT;
+			break;
+
+	 default:
+			;
+	}
+
+	return 0;
+}
+
+
+LIBFLIAPI FLILibDetach(void)
+{
+	xfree_all();
+	if(WSEnabled == 1)
+		WSACleanup();
+
+	return 0;
+}
+
+#endif
 
 long fli_connect(flidev_t dev, char *name, long domain)
 {
@@ -152,7 +220,7 @@ long fli_connect(flidev_t dev, char *name, long domain)
   DEVICE->fli_unlock = fli_unlock;
 
   DEVICE->domain = domain & 0x00ff;
-  DEVICE->devinfo.type = domain & 0xff00;
+  DEVICE->devinfo.type = domain & 0x7f00;
 
   debug(FLIDEBUG_INFO, "Domain: 0x%04x", DEVICE->domain);
   debug(FLIDEBUG_INFO, "  Type: 0x%04x", DEVICE->devinfo.type);
@@ -173,12 +241,36 @@ long fli_connect(flidev_t dev, char *name, long domain)
 	DEVICE->sys_data = sys;
 	sys->OS = OS;
 
-	if (xasprintf(&tname, "\\\\.\\%s", name) == (-1))
+	/* Determine if we are receiving a proper filename */
+	if (strncmp(name, "\\\\", 2) == 0)
 	{
-		tname = NULL;
-		fli_disconnect(dev);
-		return -ENOMEM;
+		if (xasprintf(&tname, "%s", name) == (-1))
+		{
+			tname = NULL;
+			fli_disconnect(dev);
+			return -ENOMEM;
+		}
 	}
+	else if (FN_MATCH)
+	{
+		if (xasprintf(&tname, "\\\\.\\%s", name) == (-1))
+		{
+			tname = NULL;
+			fli_disconnect(dev);
+			return -ENOMEM;
+		}
+	}
+	else /* Maybe we are opening by serial number, so, lets look for it... */
+	{
+		fli_resolve_serial_number(&tname, name, domain);
+
+		if (tname == NULL)
+		{
+			fli_disconnect(dev);
+			return -ENODEV;
+		}
+	}
+
 	DEVICE->name = tname;
 
   switch (DEVICE->domain)
@@ -285,11 +377,14 @@ long fli_connect(flidev_t dev, char *name, long domain)
 
 	  case FLIDOMAIN_USB:
     {
+#ifdef OLDUSBDRIVER
 			unsigned char buf[1024];
 			DWORD bytes;
-			PUSBD_INTERFACE_INFORMATION pInterface;
-			PUSBD_PIPE_INFORMATION pPipe;
+
+			PFLI_INTERFACE_INFORMATION pInterface;
+			PFLI_PIPE_INFORMATION pPipe;
 			int i;
+#endif
 
 			io->fd = CreateFile(tname, GENERIC_WRITE, FILE_SHARE_WRITE,
 													NULL, OPEN_EXISTING, 0, NULL);
@@ -300,7 +395,7 @@ long fli_connect(flidev_t dev, char *name, long domain)
 			}
 
 			debug(FLIDEBUG_INFO, "Getting Device configuration.");
-			if (DeviceIoControl(io->fd, IOCTL_Ezusb_GET_DEVICE_DESCRIPTOR,
+			if (DeviceIoControl(io->fd, IOCTL_GET_DEVICE_DESCRIPTOR,
 													  NULL, 0, &usbdesc, sizeof(usbdesc),
 													  &read, NULL) == FALSE)
 			{
@@ -312,6 +407,41 @@ long fli_connect(flidev_t dev, char *name, long domain)
 			DEVICE->devinfo.devid = usbdesc.idProduct;
 			DEVICE->devinfo.fwrev = usbdesc.bcdDevice;
 
+			/* Hack for incorrect FW rev on early proline cameras */
+			if ( (usbdesc.idProduct == 0x0a) &&
+				(usbdesc.iSerialNumber == 3) &&
+				(usbdesc.bcdDevice == 0x0100) )
+			{
+				DEVICE->devinfo.fwrev = 0x0101;
+			}
+
+			/* Get serial string */
+			if (usbdesc.iSerialNumber == 3)
+			{
+				GET_STRING_DESCRIPTOR_IN sd;
+				char name[MAX_PATH];
+
+				sd.Index = 3;
+				sd.LanguageId = 0x00;
+				ZeroMemory(name, sizeof(name));
+
+				if (DeviceIoControl(io->fd, IOCTL_GET_STRING_DESCRIPTOR,
+														&sd, sizeof(sd), name, sizeof(name),
+														&read, NULL) != FALSE)
+				{
+					DWORD i;
+					/* de-unicode it */
+					for (i = 0; i < read; i++)
+					{
+						name[i] = name[(i + 1) * 2];
+					}
+					name[i] = '\0';
+					debug(FLIDEBUG_INFO, "Serial: %s [%d]", name, i);
+					DEVICE->devinfo.serial = xstrdup(name);
+				}
+			}
+
+#ifdef OLDUSBDRIVER
 			/* Get pipe information */
 			if (DeviceIoControl(io->fd, IOCTL_Ezusb_GET_PIPE_INFO,
 													NULL, 0, buf, 1024, &bytes,	NULL) == FALSE)
@@ -321,7 +451,7 @@ long fli_connect(flidev_t dev, char *name, long domain)
 				return -ENODEV;
 			}
 
-			pInterface = (PUSBD_INTERFACE_INFORMATION) buf;
+			pInterface = (PFLI_INTERFACE_INFORMATION) buf;
 			pPipe = pInterface->Pipes;
 
 			for(i = 0; (i < (int) pInterface->NumberOfPipes) && (i < USB_MAX_PIPES); i++)
@@ -335,6 +465,7 @@ long fli_connect(flidev_t dev, char *name, long domain)
 					);
 				io->endpointlist[i] = pPipe[i].EndpointAddress;
 			}
+#endif
 
 			debug(FLIDEBUG_INFO, "    id: 0x%04x", DEVICE->devinfo.devid);
 			debug(FLIDEBUG_INFO, " fwrev: 0x%04x", DEVICE->devinfo.fwrev);
@@ -367,21 +498,35 @@ long fli_connect(flidev_t dev, char *name, long domain)
 	   DEVICE->fli_command = fli_filter_command;
 		 break;
 
+		case FLIDEVICE_RAW:
+		 DEVICE->fli_open = fli_raw_open;
+		 DEVICE->fli_close = fli_raw_close;
+		 DEVICE->fli_command = fli_raw_command;
+		 break;
+
 	  default:
 			fli_disconnect(dev);
 			return -EINVAL;
   }
 
 	/* Now create the synchronization object */
-	mname = (char *) xcalloc(strlen(name) + 1 + 4, sizeof(char));
+	mname = (char *) xcalloc(MAX_PATH, sizeof(char));
 	if(mname != NULL) /* We can allocate the mutex */
 	{
-		strcpy(mname, "FLI_");
+		int j = 0;
+		strcpy(mname, "CEC615E9-917D-4cee-BC2F-2DE1B6D3E03B_");
 		strcat(mname, name);
-		for(i = 0; mname[i] != '\0'; i++) /* Convert case */
+		for(i = 0; mname[i] != '\0'; i++) /* Convert case and strip nasties */
 		{
-			mname[i] = toupper(mname[i]);
+			if (isalnum(mname[i]))
+			{
+				mname[j] = toupper(mname[i]);
+				j++;
+			}
 		}
+		mname[j] = '\0';
+
+		debug(FLIDEBUG_INFO, "Creating named mutex \"%s\"", mname);
 
 		mutex = OpenMutex(MUTEX_ALL_ACCESS | SYNCHRONIZE, TRUE, mname);
 		if(mutex == NULL)
@@ -445,6 +590,12 @@ long fli_disconnect(flidev_t dev)
 		CloseHandle(((fli_sysinfo_t *) (DEVICE->sys_data))->mutex);
 	}
 
+	if (DEVICE->devinfo.serial != NULL)
+	{
+		xfree(DEVICE->devinfo.serial);
+		DEVICE->devinfo.serial = NULL;
+	}
+
   if (DEVICE->io_data != NULL)
   {
     xfree(DEVICE->io_data);
@@ -475,28 +626,47 @@ long fli_disconnect(flidev_t dev)
 
 long fli_lock(flidev_t dev)
 {
-	HANDLE mutex = ((fli_sysinfo_t *) (DEVICE->sys_data))->mutex;
+	long r = -ENODEV;
+	HANDLE mutex;
+		
+	CHKDEVICE(dev);
+
+	mutex = ((fli_sysinfo_t *) (DEVICE->sys_data))->mutex;
+
+//	debug(FLIDEBUG_INFO, "Acquiring lock...");
 
 	if (mutex != NULL)
 	{
 		switch(WaitForSingleObject(mutex, INFINITE))
 		{
 			case WAIT_OBJECT_0:
-				return 0;
+//				debug(FLIDEBUG_INFO, "Lock acquired...");
+				r = 0;
 				break;
 
 			default:
 				debug(FLIDEBUG_WARN, "Could not acquire mutex: %d", GetLastError());
-				return -ENODEV;
+				r = -ENODEV;
 				break;
 		}
 	}
-	return -ENODEV;
+	else
+	{
+		debug(FLIDEBUG_WARN, "lock(): Mutex is NULL!");
+	}
+
+	return r;
 }
 
 long fli_unlock(flidev_t dev)
 {
-	HANDLE mutex = ((fli_sysinfo_t *) (DEVICE->sys_data))->mutex;
+	HANDLE mutex;
+	
+	CHKDEVICE(dev);
+
+	mutex = ((fli_sysinfo_t *) (DEVICE->sys_data))->mutex;
+
+//	debug(FLIDEBUG_INFO, "Releasing lock...");
 
 	if (mutex != NULL)
 	{
@@ -506,6 +676,10 @@ long fli_unlock(flidev_t dev)
 			return -ENODEV;
 		}
 		return 0;
+	}
+	else
+	{
+		debug(FLIDEBUG_WARN, "unlock(): Mutex is NULL!");
 	}
 	return -ENODEV;
 }
@@ -543,6 +717,441 @@ long fli_list(flidomain_t domain, char ***names)
 }
 
 #define NAME_LEN_MAX 4096
+
+/* This function enumerates FLI devices by port, this removes boot time
+ * configuration problems */
+
+#include <devguid.h>
+#include <setupapi.h>
+
+static const GUID GUID_DEVINTERFACE_USB_DEVICE = 
+{ 0xA5DCBF10L, 0x6530, 0x11D2, { 0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED } };
+
+static long fli_resolve_serial_number(char **filename, char *serial, flidomain_t domain)
+{
+	HDEVINFO hDevInfo;
+	SP_DEVICE_INTERFACE_DATA devInterfaceData;
+	BOOL bRet = FALSE;
+	DWORD dwIndex = 0;
+
+	*filename = NULL;
+
+	hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_USB_DEVICE,
+		NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+
+	if (hDevInfo == INVALID_HANDLE_VALUE)
+	{
+		debug(FLIDEBUG_FAIL, "Could not obtain handle from SetupDiGetClassDevs(), error %d", GetLastError());
+		return 0;
+	}
+
+	ZeroMemory(&devInterfaceData, sizeof(SP_DEVICE_INTERFACE_DATA));
+	devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+	while(*filename == NULL)
+	{
+		bRet = SetupDiEnumDeviceInterfaces(hDevInfo,
+			NULL, /* PSP_DEVINFO_DATA DeviceInfoData */ 
+			&GUID_DEVINTERFACE_USB_DEVICE,
+			dwIndex, &devInterfaceData);
+
+		if (bRet == TRUE)
+		{
+			PSP_DEVICE_INTERFACE_DETAIL_DATA detailData;
+			DWORD DataSize, RequiredSize;
+			SP_DEVINFO_DATA DeviceInfoData;
+			DWORD dwRegType, dwRegSize;
+			int match = 0;
+			char *pBuffer;
+
+			ZeroMemory(&DeviceInfoData, sizeof(SP_DEVINFO_DATA));
+			DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+
+			/* Get required size of detail data and the DEVINFO_DATA structure */
+			if (SetupDiGetDeviceInterfaceDetail(hDevInfo,
+				&devInterfaceData, NULL, 0, &DataSize, &DeviceInfoData) != TRUE)
+			{
+				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+				{
+					debug(FLIDEBUG_FAIL, "Could not obtain size for interface detail data, error %d",
+					GetLastError());
+					break;
+				}
+			}
+
+			detailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) xmalloc(DataSize);
+			ZeroMemory(detailData, DataSize);
+			detailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+			/* Get the detail data */
+			if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData,
+				detailData, DataSize, &RequiredSize, NULL) != TRUE)
+			{
+				debug(FLIDEBUG_FAIL, "Could not obtain interface detail data, error %d",
+					GetLastError());
+
+				xfree(detailData);
+				break;
+			}
+
+			dwRegSize = 0;
+			pBuffer = NULL;
+
+			/* Get the service name (this should be "fliusb") */
+			if (SetupDiGetDeviceRegistryProperty(hDevInfo,
+				&DeviceInfoData, SPDRP_SERVICE, &dwRegType,
+        NULL, 0, &dwRegSize) != TRUE)
+			{
+				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+				{
+					debug(FLIDEBUG_FAIL, "Could not obtain size for service name, error %d",
+						GetLastError());
+
+					xfree(detailData);
+					break;
+				}
+			}
+
+			/* Allocate buffer for the friendly name. */
+			pBuffer = (TCHAR *) xmalloc (dwRegSize * sizeof(TCHAR));
+
+			/* Retreive the service name */
+			if (SetupDiGetDeviceRegistryProperty(hDevInfo,
+				&DeviceInfoData, SPDRP_SERVICE, &dwRegType, (PBYTE) pBuffer,
+				dwRegSize, &dwRegSize) != TRUE)
+			{
+				debug(FLIDEBUG_FAIL, "Could not get service name, error %d",
+					GetLastError());
+
+				xfree(detailData);
+				xfree(pBuffer);
+				break;
+			}
+			debug(FLIDEBUG_INFO, "Found [%s] [%s]", detailData->DevicePath, pBuffer);
+
+			/* Is it our driver? */
+			SERVICE_MATCH
+
+			if (match != 0)
+			{
+				Usb_Device_Descriptor usbdesc;
+				HANDLE fd;
+				int pid;
+				DWORD read;
+
+				do
+				{
+					fd = CreateFile(detailData->DevicePath, GENERIC_WRITE,
+						FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+					if (fd == INVALID_HANDLE_VALUE)
+					{
+						break;
+					}
+
+					if (DeviceIoControl(fd, IOCTL_GET_DEVICE_DESCRIPTOR,
+						NULL, 0, &usbdesc, sizeof(usbdesc), &read, NULL) == FALSE)
+					{
+						debug(FLIDEBUG_WARN, "Couldn't read device description, error: %d", GetLastError());
+						CloseHandle(fd);
+						break;
+					}
+
+					pid = usbdesc.idProduct;
+
+					if (
+						((pid == FLIUSB_CAM_ID) && ((domain & 0x7f00) == FLIDEVICE_CAMERA)) ||
+						((pid == FLIUSB_PROLINE_ID) && ((domain & 0x7f00) == FLIDEVICE_CAMERA)) ||
+						((pid >= 0x0100) && (pid < 0x0110) && ((domain & 0x7f00) == FLIDEVICE_CAMERA)) ||
+						((pid == FLIUSB_FOCUSER_ID) && ((domain & 0x7f00) == FLIDEVICE_FOCUSER)) ||
+						((pid == FLIUSB_FILTER_ID) && ((domain & 0x7f00) == FLIDEVICE_FILTERWHEEL))
+						)
+					{
+						GET_STRING_DESCRIPTOR_IN sd;
+						char name[MAX_PATH];
+
+						sd.Index = 3;
+						sd.LanguageId = 0x00;
+						ZeroMemory(name, sizeof(name));
+
+						if ( (usbdesc.iSerialNumber == 3) &&
+								 (DeviceIoControl(fd, IOCTL_GET_STRING_DESCRIPTOR,
+																	&sd, sizeof(sd), name, sizeof(name),
+																	&read, NULL) == FALSE) )
+						{
+							/* No serial number, so it can't match */
+						}
+						else
+						{
+							DWORD i;
+							/* de-unicode it */
+							for (i = 0; i < read; i++)
+							{
+								name[i] = name[(i + 1) * 2];
+							}
+							name[i] = '\0';
+
+							if (stricmp(name, serial) == 0)
+							{
+								debug(FLIDEBUG_INFO, "Found %s as [%s]", serial, detailData->DevicePath);
+								xasprintf(filename, "%s", detailData->DevicePath);
+							}
+						}
+					}
+					else
+					{
+//						debug(FLIDEBUG_INFO, "Not the device we are looking for.");
+					}
+					CloseHandle(fd);
+				}
+				while (0 == 1);
+			}
+
+			xfree(detailData);
+			xfree(pBuffer);
+		}
+		else
+		{
+			int err = GetLastError();
+
+			if ( (err == ERROR_NO_MORE_ITEMS) || (err == ERROR_FILE_NOT_FOUND) )
+			{
+				break;
+			}
+		}
+
+		dwIndex++; 
+	}
+
+	SetupDiDestroyDeviceInfoList(hDevInfo);
+	return 0;
+}
+
+static long fli_list_usb_by_port(flidomain_t domain, char ***names)
+{
+	HDEVINFO hDevInfo;
+	SP_DEVICE_INTERFACE_DATA devInterfaceData;
+	BOOL bRet = FALSE;
+	DWORD dwIndex = 0;
+	char **list = NULL;
+	int matched = 0;
+
+	hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_USB_DEVICE,
+		NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+
+	debug(FLIDEBUG_FAIL, "Searching by port.");
+
+	if (hDevInfo == INVALID_HANDLE_VALUE)
+	{
+		debug(FLIDEBUG_FAIL, "Could not obtain handle from SetupDiGetClassDevs(), error %d", GetLastError());
+		return 0;
+	}
+
+	ZeroMemory(&devInterfaceData, sizeof(SP_DEVICE_INTERFACE_DATA));
+	devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+	/* Allocate the list */
+  if ((list = xcalloc((MAX_SEARCH + 1) * sizeof(char *), 1)) == NULL)
+    return -ENOMEM;
+
+	while(TRUE)
+	{
+		bRet = SetupDiEnumDeviceInterfaces(hDevInfo,
+			NULL, /* PSP_DEVINFO_DATA DeviceInfoData */ 
+			&GUID_DEVINTERFACE_USB_DEVICE,
+			dwIndex, &devInterfaceData);
+
+		if (bRet == TRUE)
+		{
+			PSP_DEVICE_INTERFACE_DETAIL_DATA detailData;
+			DWORD DataSize, RequiredSize;
+			SP_DEVINFO_DATA DeviceInfoData;
+			DWORD dwRegType, dwRegSize;
+			int match = 0;
+			char *pBuffer;
+
+			ZeroMemory(&DeviceInfoData, sizeof(SP_DEVINFO_DATA));
+			DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+
+			/* Get required size of detail data and the DEVINFO_DATA structure */
+			if (SetupDiGetDeviceInterfaceDetail(hDevInfo,
+				&devInterfaceData, NULL, 0, &DataSize, &DeviceInfoData) != TRUE)
+			{
+				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+				{
+					debug(FLIDEBUG_FAIL, "Could not obtain size for interface detail data, error %d",
+					GetLastError());
+					break;
+				}
+			}
+
+			detailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) xmalloc(DataSize);
+			ZeroMemory(detailData, DataSize);
+			detailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+			/* Get the detail data */
+			if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData,
+				detailData, DataSize, &RequiredSize, NULL) != TRUE)
+			{
+				debug(FLIDEBUG_FAIL, "Could not obtain interface detail data, error %d",
+					GetLastError());
+
+				xfree(detailData);
+				break;
+			}
+
+			dwRegSize = 0;
+			pBuffer = NULL;
+
+			/* Get the service name (this should be "fliusb") */
+			if (SetupDiGetDeviceRegistryProperty(hDevInfo,
+				&DeviceInfoData, SPDRP_SERVICE, &dwRegType,
+        NULL, 0, &dwRegSize) != TRUE)
+			{
+				if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+				{
+					debug(FLIDEBUG_FAIL, "Could not obtain size for service name, error %d",
+						GetLastError());
+
+					xfree(detailData);
+					break;
+				}
+			}
+
+			/* Allocate buffer for the friendly name. */
+			pBuffer = (TCHAR *) xmalloc (dwRegSize * sizeof(TCHAR));
+
+			/* Retreive the service name */
+			if (SetupDiGetDeviceRegistryProperty(hDevInfo,
+				&DeviceInfoData, SPDRP_SERVICE, &dwRegType, (PBYTE) pBuffer,
+				dwRegSize, &dwRegSize) != TRUE)
+			{
+				debug(FLIDEBUG_FAIL, "Could not get service name, error %d",
+					GetLastError());
+
+				xfree(detailData);
+				xfree(pBuffer);
+				break;
+			}
+			debug(FLIDEBUG_INFO, "Found [%s] [%s]", detailData->DevicePath, pBuffer);
+
+			/* Is it our driver? */
+			SERVICE_MATCH
+
+			if (match != 0)
+			{
+				Usb_Device_Descriptor usbdesc;
+				HANDLE fd;
+				int pid;
+				DWORD read;
+
+				do
+				{
+					fd = CreateFile(detailData->DevicePath, GENERIC_WRITE,
+						FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+					if (fd == INVALID_HANDLE_VALUE)
+					{
+						break;
+					}
+
+					if (DeviceIoControl(fd, IOCTL_GET_DEVICE_DESCRIPTOR,
+						NULL, 0, &usbdesc, sizeof(usbdesc), &read, NULL) == FALSE)
+					{
+						debug(FLIDEBUG_WARN, "Couldn't read device description, error: %d", GetLastError());
+						CloseHandle(fd);
+						break;
+					}
+
+					pid = usbdesc.idProduct;
+
+					debug(FLIDEBUG_INFO, "Found USB PID: 0x%04x", pid);
+
+					if (
+						((pid == FLIUSB_CAM_ID) && ((domain & 0x7f00) == FLIDEVICE_CAMERA)) ||
+						((pid == FLIUSB_PROLINE_ID) && ((domain & 0x7f00) == FLIDEVICE_CAMERA)) ||
+						((pid == FLIUSB_FOCUSER_ID) && ((domain & 0x7f00) == FLIDEVICE_FOCUSER)) ||
+						((pid == FLIUSB_FILTER_ID) && ((domain & 0x7f00) == FLIDEVICE_FILTERWHEEL)) ||
+						((pid >= 0x0100) && (pid < 0x0110) && ((domain & 0x7f00) == FLIDEVICE_CAMERA))
+						)
+					{
+						GET_STRING_DESCRIPTOR_IN sd;
+						char name[MAX_PATH];
+						char model[MAX_PATH];
+						flidev_t dev;
+
+						sd.Index = 3;
+						sd.LanguageId = 0x00;
+						ZeroMemory(name, sizeof(name));
+						ZeroMemory(model, sizeof(model));
+
+						if ( (usbdesc.iSerialNumber == 3) &&
+							   (DeviceIoControl(fd, IOCTL_GET_STRING_DESCRIPTOR,
+																	&sd, sizeof(sd), name, sizeof(name),
+																	&read, NULL) != FALSE) )
+						{
+							DWORD i;
+							/* de-unicode it */
+							for (i = 0; i < read; i++)
+							{
+								name[i] = name[(i + 1) * 2];
+							}
+							name[i] = '\0';
+							debug(FLIDEBUG_INFO, "Adding %s", name);
+						}
+						else
+						{
+							strncpy(name, detailData->DevicePath, MAX_PATH - 1);
+						}
+
+						/* Get model information */
+						if (FLIOpen(&dev, detailData->DevicePath, domain) == 0)
+						{
+							xasprintf(&list[matched], "%s;%s", name, DEVICE->devinfo.model);
+							matched ++;
+
+							FLIClose(dev);
+						}
+					}
+					else
+					{
+						debug(FLIDEBUG_INFO, "Not the device we are looking for.");
+					}
+					CloseHandle(fd);
+				}
+				while (0 == 1);
+			}
+
+			xfree(detailData);
+			xfree(pBuffer);
+		}
+		else
+		{
+			int err = GetLastError();
+
+			if ( (err == ERROR_NO_MORE_ITEMS) || (err == ERROR_FILE_NOT_FOUND) )
+			{
+				break;
+			}
+		}
+
+		dwIndex++; 
+	}
+
+	SetupDiDestroyDeviceInfoList(hDevInfo);
+
+	if(matched == 0)
+	{
+		*names = NULL;
+		xfree(list);
+		return 0;
+	}
+
+	list[matched++] = NULL;
+	*names = list;
+
+	return 0;
+}
 
 static long fli_list_tree(const char *root, flidomain_t domain, char ***names)
 {
@@ -585,7 +1194,7 @@ static long fli_list_tree(const char *root, flidomain_t domain, char ***names)
 			if (FLIOpen(&dev, fname, domain) == 0)
 			{
 				if (snprintf(name, NAME_LEN_MAX, "%s;%s", fname,
-				DEVICE->devinfo.model) >= NAME_LEN_MAX)
+					DEVICE->devinfo.model) >= NAME_LEN_MAX)
 				{
 					xfree(list);
 					return -EOVERFLOW;
@@ -616,16 +1225,19 @@ static long fli_list_tree(const char *root, flidomain_t domain, char ***names)
 
 static long fli_list_usb(flidomain_t domain, char ***names)
 {
-	switch (domain & 0xff00)
+	switch (domain & 0x7f00)
 	{
 		case FLIDEVICE_CAMERA:
-		  return fli_list_tree("flipro,flicam", domain, names);
+			if ( (domain & 0x8000) == 0 )
+			  return fli_list_tree(LIST_USB_CAM_PREFIX_LIST, domain, names);
+			else
+				return fli_list_usb_by_port(domain, names);
 
 		case FLIDEVICE_FOCUSER:
-		  return fli_list_tree("flifoc", domain, names);
+		  return fli_list_tree(LIST_USB_FOCUSER_PREFIX_LIST, domain, names);
 
 		case FLIDEVICE_FILTERWHEEL:
-		  return fli_list_tree("flifil", domain, names);
+		  return fli_list_tree(LIST_USB_FILTER_PREFIX_LIST, domain, names);
 
 		default:
 			return -EINVAL;
@@ -640,10 +1252,10 @@ static long fli_list_serial(flidomain_t domain, char ***names)
 	switch (domain & 0xff00)
 	{
 		case FLIDEVICE_FOCUSER:
-		  return fli_list_tree("COM", domain, names);
+		  return fli_list_tree("\\\\?\\COM", domain, names);
 
 		case FLIDEVICE_FILTERWHEEL:
-		  return fli_list_tree("COM", domain, names);
+		  return fli_list_tree("\\\\?\\COM", domain, names);
 
 		default:
 			return -EINVAL;
