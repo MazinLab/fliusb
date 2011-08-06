@@ -113,16 +113,25 @@ static ssize_t fliusb_read(struct file *file, char __user *buffer,
 			   size_t count, loff_t *ppos);
 static ssize_t fliusb_write(struct file *file, const char __user *user_buffer,
 			    size_t count, loff_t *ppos);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 static int fliusb_ioctl(struct inode *inode, struct file *file,
 			unsigned int cmd, unsigned long arg);
+#else
+static long fliusb_ioctl(struct file *file,
+			unsigned int cmd, unsigned long arg);
+#endif
 
 static struct file_operations fliusb_fops = {
-  .owner	= THIS_MODULE,
-  .read		= fliusb_read,
-  .write	= fliusb_write,
-  .ioctl	= fliusb_ioctl,
-  .open		= fliusb_open,
-  .release	= fliusb_release,
+  .owner		= THIS_MODULE,
+  .read			= fliusb_read,
+  .write		= fliusb_write,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
+  .ioctl		= fliusb_ioctl,
+#else
+  .unlocked_ioctl	= fliusb_ioctl,
+#endif  
+  .open			= fliusb_open,
+  .release		= fliusb_release,
 };
 
 static struct usb_class_driver fliusb_class = {
@@ -566,8 +575,13 @@ static ssize_t fliusb_write(struct file *file, const char __user *userbuffer,
 			   userbuffer, count, dev->timeout);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 static int fliusb_ioctl(struct inode *inode, struct file *file,
 			unsigned int cmd, unsigned long arg)
+#else
+static long fliusb_ioctl(struct file *file,
+			unsigned int cmd, unsigned long arg)
+#endif
 {
   fliusb_t *dev;
   union {
@@ -786,14 +800,22 @@ static int fliusb_initdev(fliusb_t **dev, struct usb_interface *interface,
     goto fail;
   }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
   init_MUTEX(&tmpdev->buffsem);
+#else
+  sema_init(&tmpdev->buffsem, 1);
+#endif  
   if ((err = fliusb_allocbuffer(tmpdev, defaults.buffersize)))
     goto fail;
 
 #ifdef SGREAD
   tmpdev->usbsg.maxpg = NUMSGPAGE;
   init_timer(&tmpdev->usbsg.timer);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)  
   init_MUTEX(&tmpdev->usbsg.sem);
+#else
+  sema_init(&tmpdev->usbsg.sem, 1);
+#endif  
 #endif /* SGREAD */
 
   if ((err = usb_string(tmpdev->usbdev, tmpdev->usbdev->descriptor.iProduct,
