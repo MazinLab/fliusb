@@ -71,7 +71,7 @@ static long unix_fli_list_parport(flidomain_t domain, char ***names);
 static long unix_fli_list_usb(flidomain_t domain, char ***names);
 static long unix_fli_list_serial(flidomain_t domain, char ***names);
 
-long unix_fli_connect(flidev_t dev, char *name, long domain)
+long unix_fli_connect(flidev_t dev, const char *name, long domain)
 {
   fli_unixio_t *io;
   struct usb_device_descriptor usbdesc;

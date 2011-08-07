@@ -51,7 +51,7 @@
 
 static long devalloc(flidev_t *dev);
 static long devfree(flidev_t dev);
-static long fli_open(flidev_t *dev, char *name, long domain);
+static long fli_open(flidev_t *dev, const char *name, long domain);
 static long fli_close(flidev_t dev);
 static long fli_freelist(char **names);
 
@@ -120,7 +120,7 @@ static long devfree(flidev_t dev)
   return 0;
 }
 
-static long fli_open(flidev_t *dev, char *name, long domain)
+static long fli_open(flidev_t *dev, const char *name, long domain)
 {
   int retval;
 
@@ -608,7 +608,7 @@ LIBFLIAPI FLIGetVisibleArea(flidev_t dev, long* ul_x, long* ul_y,
    @see flidomain_t
 */
 
-LIBFLIAPI FLIOpen(flidev_t *dev, char *name, flidomain_t domain)
+LIBFLIAPI FLIOpen(flidev_t *dev, const char *name, flidomain_t domain)
 {
 	long r;
 

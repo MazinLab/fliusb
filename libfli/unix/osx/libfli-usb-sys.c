@@ -63,7 +63,7 @@
 #include "libfli-usb.h"
 #include "fliusb_ioctl.h"
 
-long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
+long linux_usb_connect(flidev_t dev, fli_unixio_t *io, const char *name)
 {
   struct usb_device_descriptor usbdesc;
   int confg, r;
