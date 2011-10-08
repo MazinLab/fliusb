@@ -452,9 +452,6 @@ static int fliusb_bulk_write(fliusb_t *dev, unsigned int pipe,
 			  timeout)))
   {
     cnt = err;
-    // reset USB in case of an error
-    err = usb_reset_configuration (dev->usbdev);
-    FLIUSB_DBG("configuration return: %d", err);
   }
 
  done:
