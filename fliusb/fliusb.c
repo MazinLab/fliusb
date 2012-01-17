@@ -44,13 +44,13 @@
 #include <linux/version.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/errno.h>
 #include <linux/usb.h>
 #include <linux/fs.h>
 #include <linux/fcntl.h>
-#include <linux/smp_lock.h>
 #include <asm/uaccess.h>
 #include <linux/slab.h>
 
@@ -79,6 +79,8 @@ static fliusb_param_t defaults = {
   .buffersize =	FLIUSB_BUFFERSIZE,
   .timeout =	FLIUSB_TIMEOUT,
 };
+
+struct mutex flimutex;
 
 #define FLIUSB_MOD_PARAMETERS						     \
   FLIUSB_MOD_PARAM(buffersize, uint, "USB bulk transfer buffer size")	     \
@@ -868,7 +870,7 @@ static void fliusb_disconnect(struct usb_interface *interface)
   /* this is to block entry to fliusb_open() while the device is being
      disconnected
   */
-  lock_kernel();
+  mutex_lock(&flimutex);
 
   dev = usb_get_intfdata(interface);
   usb_set_intfdata(interface, NULL);
@@ -876,7 +878,7 @@ static void fliusb_disconnect(struct usb_interface *interface)
   /* give back the minor number we were using */
   usb_deregister_dev(interface, &fliusb_class);
 
-  unlock_kernel();
+  mutex_unlock(&flimutex);
 
   /* decrement usage count */
   kref_put(&dev->kref, fliusb_delete);
@@ -890,6 +892,8 @@ static int __init fliusb_init(void)
 
   if ((err = usb_register(&fliusb_driver)))
     FLIUSB_ERR("usb_register() failed: %d", err);
+
+  mutex_init(&flimutex);
 
   FLIUSB_INFO(FLIUSB_NAME " module loaded");
 
