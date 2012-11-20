@@ -41,9 +41,6 @@
 
 */
 
-#define DllImport  __declspec( dllimport )
-#define DllExport  __declspec( dllexport )
-
 #ifndef _LIBFLI_H_
 #define _LIBFLI_H_
 
@@ -169,7 +166,7 @@ typedef long flitdiflags_t;
 
 /* Status settings */
 #define FLI_CAMERA_STATUS_UNKNOWN (0xffffffff)
-#define FLI_CAMERA_STATUS_MASK (0x000000ff)
+#define FLI_CAMERA_STATUS_MASK (0x00000003)
 #define FLI_CAMERA_STATUS_IDLE (0x00)
 #define FLI_CAMERA_STATUS_WAITING_FOR_TRIGGER (0x01)
 #define FLI_CAMERA_STATUS_EXPOSING (0x02)
@@ -185,10 +182,25 @@ typedef long flitdiflags_t;
 #define FLI_FOCUSER_STATUS_LIMIT (0x00000040)
 #define FLI_FOCUSER_STATUS_LEGACY (0x10000000)
 
+#define FLI_FILTER_WHEEL_PHYSICAL (0x100)
+#define FLI_FILTER_WHEEL_VIRTUAL (0)
+#define FLI_FILTER_WHEEL_LEFT (FLI_FILTER_WHEEL_PHYSICAL | 0x00)
+#define FLI_FILTER_WHEEL_RIGHT (FLI_FILTER_WHEEL_PHYSICAL | 0x01)
+#define FLI_FILTER_STATUS_MOVING_CCW (0x01)
+#define FLI_FILTER_STATUS_MOVING_CW (0x02)
+#define FLI_FILTER_POSITION_UNKNOWN (0xff)
+#define FLI_FILTER_POSITION_CURRENT (0x200)
+#define FLI_FILTER_STATUS_HOMING (0x00000004)
+#define FLI_FILTER_STATUS_HOME (0x00000080)
+#define FLI_FILTER_STATUS_HOME_LEFT (0x00000080)
+#define FLI_FILTER_STATUS_HOME_RIGHT (0x00000040)
+#define FLI_FILTER_STATUS_HOME_SUCCEEDED (0x00000008)
+
 #define FLIDEBUG_NONE (0x00)
 #define FLIDEBUG_INFO (0x01)
 #define FLIDEBUG_WARN (0x02)
 #define FLIDEBUG_FAIL (0x04)
+#define FLIDEBUG_IO		(0x08)
 #define FLIDEBUG_ALL (FLIDEBUG_INFO | FLIDEBUG_WARN | FLIDEBUG_FAIL)
 
 #define FLI_IO_P0 (0x01)
@@ -199,20 +211,30 @@ typedef long flitdiflags_t;
 #define FLI_FAN_SPEED_OFF (0x00)
 #define FLI_FAN_SPEED_ON (0xffffffff)
 
-#ifdef _WIN32
+#define FLI_EEPROM_USER (0x00)
+#define FLI_EEPROM_PIXEL_MAP (0x01)
+
+#define FLI_PIXEL_DEFECT_COLUMN (0x00)
+#define FLI_PIXEL_DEFECT_CLUSTER (0x10)
+#define FLI_PIXEL_DEFECT_POINT_BRIGHT (0x20)
+#define FLI_PIXEL_DEFECT_POINT_DARK (0x30)
+
 #ifndef LIBFLIAPI
-#ifndef STATIC_LIBRARY
-
-#define LIBFLIAPI __declspec(dllexport) long __stdcall
-		//#define LIBFLIAPI __declspec(dllimport) long __stdcall
-#else
-
-#define LIBFLIAPI long __stdcall
-
-#endif
-#endif
-#else
-#define LIBFLIAPI long
+#  ifdef _WIN32
+#    ifdef _LIB
+#      define LIBFLIAPI long __stdcall
+#    else
+#      ifdef _USRDLL
+/* The module definition file precludes using __declspec(dllexport) */
+/*#        define LIBFLIAPI __declspec(dllexport) long __stdcall    */
+#      define LIBFLIAPI long __stdcall
+#      else
+#        define LIBFLIAPI __declspec(dllimport) long __stdcall
+#      endif
+#    endif
+#  else
+#    define LIBFLIAPI long
+#  endif
 #endif
 
 /* Library API Function prototypes */
@@ -221,7 +243,13 @@ typedef long flitdiflags_t;
 extern "C" {  // only need to export C interface if used by C++ source code
 #endif
 
-LIBFLIAPI FLIOpen(flidev_t *dev, const char *name, flidomain_t domain);
+#ifdef WIN32
+void __cdecl FLIDebug(int level, char *format, ...);
+#else
+void FLIDebug(int level, char *format, ...);
+#endif
+
+LIBFLIAPI FLIOpen(flidev_t *dev, char *name, flidomain_t domain);
 LIBFLIAPI FLISetDebugLevel(char *host, flidebug_t level);
 LIBFLIAPI FLIClose(flidev_t dev);
 LIBFLIAPI FLIGetLibVersion(char* ver, size_t len);
@@ -229,9 +257,6 @@ LIBFLIAPI FLIGetModel(flidev_t dev, char* model, size_t len);
 LIBFLIAPI FLIGetPixelSize(flidev_t dev, double *pixel_x, double *pixel_y);
 LIBFLIAPI FLIGetHWRevision(flidev_t dev, long *hwrev);
 LIBFLIAPI FLIGetFWRevision(flidev_t dev, long *fwrev);
-LIBFLIAPI FLIGetDeviceID(flidev_t dev, long *devid);
-LIBFLIAPI FLIGetSerialNum(flidev_t dev, long *serno);
-LIBFLIAPI FLIGetDeviceName(flidev_t dev, const char **devnam);
 LIBFLIAPI FLIGetArrayArea(flidev_t dev, long* ul_x, long* ul_y,
 			  long* lr_x, long* lr_y);
 LIBFLIAPI FLIGetVisibleArea(flidev_t dev, long* ul_x, long* ul_y,
@@ -262,9 +287,15 @@ LIBFLIAPI FLIControlBackgroundFlush(flidev_t dev, flibgflush_t bgflush);
 LIBFLIAPI FLISetDAC(flidev_t dev, unsigned long dacset);
 LIBFLIAPI FLIList(flidomain_t domain, char ***names);
 LIBFLIAPI FLIFreeList(char **names);
+
+LIBFLIAPI FLIGetFilterName(flidev_t dev, long filter, char *name, size_t len);
+LIBFLIAPI	FLISetActiveWheel(flidev_t dev, long wheel);
+LIBFLIAPI	FLIGetActiveWheel(flidev_t dev, long *wheel);
+
 LIBFLIAPI FLISetFilterPos(flidev_t dev, long filter);
 LIBFLIAPI FLIGetFilterPos(flidev_t dev, long *filter);
 LIBFLIAPI FLIGetFilterCount(flidev_t dev, long *filter);
+
 LIBFLIAPI FLIStepMotor(flidev_t dev, long steps);
 LIBFLIAPI FLIStepMotorAsync(flidev_t dev, long steps);
 LIBFLIAPI FLIGetStepperPosition(flidev_t dev, long *position);
@@ -294,6 +325,12 @@ LIBFLIAPI FLIGetSerialString(flidev_t dev, char* serial, size_t len);
 LIBFLIAPI FLIEndExposure(flidev_t dev);
 LIBFLIAPI FLITriggerExposure(flidev_t dev);
 LIBFLIAPI FLISetFanSpeed(flidev_t dev, long fan_speed);
+LIBFLIAPI FLISetVerticalTableEntry(flidev_t dev, long index, long height, long bin, long mode);
+LIBFLIAPI FLIGetVerticalTableEntry(flidev_t dev, long index, long *height, long *bin, long *mode);
+LIBFLIAPI FLIGetReadoutDimensions(flidev_t dev, long *width, long *hoffset, long *hbin, long *height, long *voffset, long *vbin);
+LIBFLIAPI FLIEnableVerticalTable(flidev_t dev, long width, long offset, long flags);
+LIBFLIAPI FLIReadUserEEPROM(flidev_t dev, long loc, long address, long length, void *rbuf);
+LIBFLIAPI FLIWriteUserEEPROM(flidev_t dev, long loc, long address, long length, void *wbuf);
 
 #ifdef __cplusplus
 }

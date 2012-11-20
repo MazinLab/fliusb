@@ -45,6 +45,7 @@
 #include <winioctl.h>
 #include <stdio.h>
 #include <errno.h>
+#include <shlobj.h>
 
 #include "../libfli-libfli.h"
 #include "../libfli-debug.h"
@@ -56,7 +57,6 @@
 #include "libfli-parport.h"
 #include "libfli-usb.h"
 #include "libfli-serial.h"
-//#include "ezusbsys.h"
 
 #define MAX_SEARCH 16
 #define MAX_SEARCH_DIGITS 3
@@ -73,6 +73,7 @@ static long fli_resolve_serial_number(char **filename, char *serial, flidomain_t
 #ifndef SERVICE_MATCH
 #define SERVICE_MATCH { \
 		if (stricmp(pBuffer, "fliusb") == 0) match ++; \
+		if (stricmp(pBuffer, "dnrusb") == 0) match ++; \
 		if (stricmp(pBuffer, "reltusb") == 0) match ++; \
 		if (stricmp(pBuffer, "pslcamusb") == 0) match ++; \
 	}
@@ -82,6 +83,7 @@ static long fli_resolve_serial_number(char **filename, char *serial, flidomain_t
 	(_strnicmp(name, "psl", 3) == 0) || \
 	(_strnicmp(name, "rel", 3) == 0) || \
 	(_strnicmp(name, "fli", 3) == 0) || \
+	(_strnicmp(name, "dnr", 3) == 0) || \
 	(_strnicmp(name, "ccd", 3) == 0) \
 	)
 
@@ -91,11 +93,15 @@ static long fli_resolve_serial_number(char **filename, char *serial, flidomain_t
 
 #endif
 
-#ifndef STATICLIBRARY
+#ifdef _USRDLL
 BOOL APIENTRY DllMain( HANDLE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved )
 {
+	char strPath[ MAX_PATH ];
+	HKEY hKey;
+	DWORD len, forcedebug = 0;
+
 	switch(ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
@@ -106,10 +112,40 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 				WSEnabled = 1;
 			}
 
-			if(GetFileAttributes("C:\\FLIDBG.TXT") != (-1))
+#define CREATEDEBUG
+#ifdef CREATEDEBUG
+//			OutputDebugString("libfli: loading\n");
+			if (RegOpenKey(HKEY_CURRENT_USER,
+				"SOFTWARE\\Finger Lakes Instrumentation\\libfli",
+				&hKey) == ERROR_SUCCESS)
 			{
-				FLISetDebugLevel("C:\\FLIDBG.TXT", FLIDEBUG_ALL);
+				len = sizeof(DWORD);
+				if (RegQueryValueEx(hKey, "debug", NULL, NULL, (LPBYTE) &forcedebug, &len) == ERROR_SUCCESS)
+				{
+//					OutputDebugString("libfli: debug registry key found!\n");
+				}
+				else
+				{
+//					OutputDebugString("libfli: debug registry key not found!\n");
+				}
+				RegCloseKey(hKey);
 			}
+
+			//{
+			//	char _s[1024];
+			//	sprintf(_s, "libfli: [%08x]\n", forcedebug);
+			//	OutputDebugString(_s);
+			//}
+
+			if (forcedebug)
+			{
+				SHGetSpecialFolderPath(0, strPath,
+						CSIDL_DESKTOPDIRECTORY, FALSE);
+
+				strcat(strPath, "\\flidbg.txt");
+				FLISetDebugLevel(strPath, forcedebug);
+			}
+#endif
 
 			OSVersionInfo.dwOSVersionInfoSize=sizeof(OSVERSIONINFO);
 			if(GetVersionEx(&OSVersionInfo)==0)
@@ -149,10 +185,15 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 
   return TRUE;
 }
-#else
+#endif
 
+#ifdef _LIB
 LIBFLIAPI FLILibAttach(void)
 {
+	char strPath[MAX_PATH];
+	HKEY hKey;
+	DWORD len, forcedebug = 0;
+
 	QueryPerformanceCounter(&dlltime);
 	WSEnabled = 0;
 	if (WSAStartup(MAKEWORD(1, 1), &WSAData) == 0)
@@ -160,10 +201,45 @@ LIBFLIAPI FLILibAttach(void)
 		WSEnabled = 1;
 	}
 
-	//if(GetFileAttributes("C:\\FLIDBG.TXT") != (-1))
-	//{
-	//	FLISetDebugLevel("C:\\FLIDBG.TXT", FLIDEBUG_ALL);
-	//}
+//#define CREATEDEBUG
+#ifdef CREATEDEBUG
+			SHGetSpecialFolderPath(0, strPath,
+					CSIDL_DESKTOPDIRECTORY, FALSE );
+
+			strcat(strPath, "\\flidbg.txt");
+			FLISetDebugLevel(strPath, FLIDEBUG_ALL);
+#endif
+
+			if (RegOpenKey(HKEY_CURRENT_USER,
+				"SOFTWARE\\Finger Lakes Instrumentation\\libfli",
+				&hKey) == ERROR_SUCCESS)
+			{
+				len = sizeof(DWORD);
+				if (RegQueryValueEx(hKey, "debug", NULL, NULL, (LPBYTE) &forcedebug, &len) == ERROR_SUCCESS)
+				{
+//					OutputDebugString("libfli: debug registry key found!\n");
+				}
+				else
+				{
+//					OutputDebugString("libfli: debug registry key not found!\n");
+				}
+				RegCloseKey(hKey);
+			}
+
+			//{
+			//	char _s[1024];
+			//	sprintf(_s, "libfli: [%08x]\n", forcedebug);
+			//	OutputDebugString(_s);
+			//}
+
+			if (forcedebug)
+			{
+				SHGetSpecialFolderPath(0, strPath,
+						CSIDL_DESKTOPDIRECTORY, FALSE);
+
+				strcat(strPath, "\\flidbg.txt");
+				FLISetDebugLevel(strPath, forcedebug);
+			}
 
 	OSVersionInfo.dwOSVersionInfoSize=sizeof(OSVERSIONINFO);
 	if(GetVersionEx(&OSVersionInfo)==0)
@@ -241,8 +317,19 @@ long fli_connect(flidev_t dev, char *name, long domain)
 	DEVICE->sys_data = sys;
 	sys->OS = OS;
 
+	/* Hack for COM port devices */
+	if ( ((DEVICE->domain & 0x00ff) == FLIDOMAIN_SERIAL) &&
+		(_strnicmp(name, "COM", 3) == 0) )
+	{
+		if (xasprintf(&tname, "\\\\.\\%s", name) == (-1))
+		{
+			tname = NULL;
+			fli_disconnect(dev);
+			return -ENOMEM;
+		}
+	}
 	/* Determine if we are receiving a proper filename */
-	if (strncmp(name, "\\\\", 2) == 0)
+	else if (strncmp(name, "\\\\", 2) == 0)
 	{
 		if (xasprintf(&tname, "%s", name) == (-1))
 		{

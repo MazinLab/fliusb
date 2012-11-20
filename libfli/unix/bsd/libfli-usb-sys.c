@@ -55,7 +55,7 @@
 #include "libfli-sys.h"
 #include "libfli-usb.h"
 
-long bsd_usb_connect(flidev_t dev, fli_unixio_t *io, const char *name)
+long bsd_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
 {
   usb_device_descriptor_t usbdesc;
   int tmp, ep;

@@ -60,6 +60,13 @@
 #define unix_usb_disconnect	bsd_usb_disconnect
 #define unix_bulktransfer	bsd_bulktransfer
 
+#elif defined(__APPLE__)
+#define unix_bulkwrite		mac_bulkwrite
+#define unix_bulkread		mac_bulkread
+#define unix_usb_connect	mac_usb_connect
+#define unix_usb_disconnect	mac_usb_disconnect
+#define unix_bulktransfer	mac_bulktransfer
+
 #else
 #error "Unknown system"
 #endif
@@ -67,10 +74,14 @@
 long unix_bulkwrite(flidev_t dev, void *buf, long *wlen);
 long unix_bulkread(flidev_t dev, void *buf, long *rlen);
 long unix_usbio(flidev_t dev, void *buf, long *wlen, long *rlen);
-long unix_usb_connect(flidev_t dev, fli_unixio_t *io, const char *name);
+long unix_usb_connect(flidev_t dev, fli_unixio_t *io, char *name);
 long unix_usb_disconnect(flidev_t dev);
 long unix_bulktransfer(flidev_t dev, int ep, void *buf, long *len);
 
+#if defined(__APPLE__)
+#define usb_bulktransfer mac_bulktransfer
+#else
 #define usb_bulktransfer unix_bulktransfer /* XXX */
+#endif
 
 #endif /* _LIBFLI_USB_H_ */

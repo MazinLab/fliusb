@@ -48,7 +48,6 @@
 #include "libfli-sys.h"
 #include <winioctl.h>
 #include "libfli-usb.h"
-//#include "ezusbsys.h"
 #include "stdio.h"
 
 static LARGE_INTEGER time = { -1 };

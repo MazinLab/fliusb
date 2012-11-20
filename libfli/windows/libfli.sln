@@ -1,21 +1,38 @@
-Microsoft Visual Studio Solution File, Format Version 8.00
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libfli", "libfli.vcproj", "{C8568204-BDCE-4DA8-B382-E1573A9BDDD6}"
-	ProjectSection(ProjectDependencies) = postProject
-	EndProjectSection
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libfli", "libfli.vcproj", "{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}"
 EndProject
 Global
-	GlobalSection(SolutionConfiguration) = preSolution
-		Debug = Debug
-		Release = Release
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		DLL Debug|Win32 = DLL Debug|Win32
+		DLL Debug|x64 = DLL Debug|x64
+		DLL Release|Win32 = DLL Release|Win32
+		DLL Release|x64 = DLL Release|x64
+		Static Library Debug|Win32 = Static Library Debug|Win32
+		Static Library Debug|x64 = Static Library Debug|x64
+		Static Library Release|Win32 = Static Library Release|Win32
+		Static Library Release|x64 = Static Library Release|x64
 	EndGlobalSection
-	GlobalSection(ProjectConfiguration) = postSolution
-		{C8568204-BDCE-4DA8-B382-E1573A9BDDD6}.Debug.ActiveCfg = Debug|Win32
-		{C8568204-BDCE-4DA8-B382-E1573A9BDDD6}.Debug.Build.0 = Debug|Win32
-		{C8568204-BDCE-4DA8-B382-E1573A9BDDD6}.Release.ActiveCfg = Release|Win32
-		{C8568204-BDCE-4DA8-B382-E1573A9BDDD6}.Release.Build.0 = Release|Win32
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Debug|Win32.ActiveCfg = DLL Debug|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Debug|Win32.Build.0 = DLL Debug|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Debug|x64.ActiveCfg = DLL Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Debug|x64.Build.0 = DLL Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Release|Win32.ActiveCfg = DLL Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Release|Win32.Build.0 = DLL Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Release|x64.ActiveCfg = DLL Release|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.DLL Release|x64.Build.0 = DLL Release|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Debug|Win32.ActiveCfg = Static Library Debug|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Debug|Win32.Build.0 = Static Library Debug|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Debug|x64.ActiveCfg = Static Library Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Debug|x64.Build.0 = Static Library Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Release|Win32.ActiveCfg = Static Library Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Release|Win32.Build.0 = Static Library Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Release|x64.ActiveCfg = Static Library Release|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Static Library Release|x64.Build.0 = Static Library Release|x64
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-	EndGlobalSection
-	GlobalSection(ExtensibilityAddIns) = postSolution
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

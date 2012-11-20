@@ -10,11 +10,23 @@ endif
 ifeq ($(UNAME), BSD)
   VPATH	+= unix/bsd
 endif
+ifeq ($(UNAME), Darwin)
+  VPATH	+= unix/osx
+endif
 
 DIR	= $(shell pwd)
 CC	= gcc
 INC	= $(DIR) $(DIR)/unix
 CFLAGS	= -Wall -O2 -g $(patsubst %, -I%, $(INC))
+
+ifeq ($(UNAME), Darwin)
+	CFLAGS += -arch i386 -arch x86_64
+	INC += $(DIR)/unix/osx /Developer/SDKs/MacOSX10.7.sdk/usr/include
+	LIBS =IOkit
+	LIBPATH = /usr/local/lib /sw/lib /usr/lib/ /System/Library/Frameworks/CoreFoundation.framework
+	LDLIBS = $(patsubst %, -l%, $(LIBS))
+	LOADLIBES = $(patsubst %, -L%, $(LIBPATH))
+endif
 
 AR	= ar
 ARFLAGS	= -rus

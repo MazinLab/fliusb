@@ -55,7 +55,7 @@
 #if defined(__linux__)
 
 #define __SYSNAME__ "Linux"
-#define __LIBFLI_MINOR__ 99
+#define __LIBFLI_MINOR__ 104
 #define USB_READ_SIZ_MAX (1024 * 64)
 #define _USE_FLOCK_
 #define PARPORT_GLOB "/dev/ccd*"
@@ -78,6 +78,20 @@
 #define USB_GLOB "/dev/ugen*.0" __STRINGIFY(FLI_USB_CMDENDPOINT)
 #define SERIAL_GLOB "/dev/dty0*"
 
+#elif defined (__APPLE__)
+
+#define __SYSNAME__ "MacOSX"
+#define __LIBFLI_MINOR__ 13
+#define USB_READ_SIZ_MAX 65536
+#define USB_GLOB "/dev/ugen*.0" __STRINGIFY(FLI_USB_CMDENDPOINT)
+#define SERIAL_GLOB "/dev/dty0*"
+
+#define fli_connect mac_fli_connect 
+#define fli_disconnect mac_fli_disconnect
+#define fli_list mac_fli_list
+#define unix_fli_lock mac_fli_lock
+#define unix_fli_unlock	mac_fli_unlock
+
 #else
 #error "Unknown system"
 #endif
@@ -86,14 +100,22 @@ typedef struct {
   int fd;
 } fli_unixio_t;
 
-long unix_fli_connect(flidev_t dev, const char *name, long domain);
+long unix_fli_connect(flidev_t dev, char *name, long domain);
 long unix_fli_disconnect(flidev_t dev);
 long unix_fli_lock(flidev_t dev);
 long unix_fli_unlock(flidev_t dev);
 long unix_fli_list(flidomain_t domain, char ***names);
 
+#if defined(__APPLE__)
+#define fli_connect mac_fli_connect 
+#define fli_disconnect mac_fli_disconnect
+#define fli_list mac_fli_list
+#define unix_fli_lock mac_fli_lock
+#define unix_fli_unlock	mac_fli_unlock
+#else
 #define fli_connect unix_fli_connect
 #define fli_disconnect unix_fli_disconnect
 #define fli_list unix_fli_list
+#endif
 
 #endif /* _LIBFLI_SYS_H */

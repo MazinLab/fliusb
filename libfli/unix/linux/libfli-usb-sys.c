@@ -45,7 +45,16 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <linux/fli-usb.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,14))
+#include <linux/usb/ch9.h>
+#else
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14))
+#include <usb.h>
+#include <linux/usb.h>
+#else
+#include <linux/usb_ch9.h>
+#endif
+#endif
 
 #include <linux/usbdevice_fs.h>
 #include <sys/ioctl.h>
@@ -59,7 +68,7 @@
 #include "libfli-usb.h"
 #include "fliusb_ioctl.h"
 
-long linux_usb_connect(flidev_t dev, fli_unixio_t *io, const char *name)
+long linux_usb_connect(flidev_t dev, fli_unixio_t *io, char *name)
 {
   struct usb_device_descriptor usbdesc;
   fliusb_string_descriptor_t strdesc; 

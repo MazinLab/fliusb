@@ -114,7 +114,7 @@ void debug(int level, char *format, ...)
   return;
 }
 
-void setdebuglevel(char *host, int level)
+void setdebuglevel(char *host, long level)
 {
   _loghost = host;
   _loglevel = level;

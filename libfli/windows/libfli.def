@@ -1,5 +1,4 @@
 LIBRARY		libfli
-VERSION		1.52
 EXPORTS
 	FLIOpen					@1
 	FLIClose				@2
@@ -56,8 +55,21 @@ EXPORTS
 	FLIGetCameraModeString	@53
 	FLIGetCameraMode		@54
 	FLISetCameraMode		@55
-	
-	
-	
-
-	
+	FLIHomeDevice			@56
+	FLIGrabVideoFrame		@57
+	FLIStopVideoMode		@58
+	FLIStartVideoMode		@59
+	FLIGetSerialString		@60
+	FLIEndExposure			@61
+	FLITriggerExposure		@62
+	FLISetFanSpeed			@63
+	FLISetVerticalTableEntry @64
+	FLIGetVerticalTableEntry @65
+	FLIGetReadoutDimensions @66
+	FLIEnableVerticalTable	@67
+	FLIReadUserEEPROM		@68
+	FLIWriteUserEEPROM		@69
+	FLISetActiveWheel		@70
+	FLIGetFilterName		@71
+	FLIDebug				@72
+	FLISetTDI				@73
