@@ -249,7 +249,7 @@ void __cdecl FLIDebug(int level, char *format, ...);
 void FLIDebug(int level, char *format, ...);
 #endif
 
-LIBFLIAPI FLIOpen(flidev_t *dev, char *name, flidomain_t domain);
+LIBFLIAPI FLIOpen(flidev_t *dev, const char *name, flidomain_t domain);
 LIBFLIAPI FLISetDebugLevel(char *host, flidebug_t level);
 LIBFLIAPI FLIClose(flidev_t dev);
 LIBFLIAPI FLIGetLibVersion(char* ver, size_t len);

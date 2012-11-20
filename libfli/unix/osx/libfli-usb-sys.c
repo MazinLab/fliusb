@@ -188,7 +188,7 @@ long mac_fli_list(flidomain_t domain, char ***names)
 // Function to enumerate and establish connection to device
 //
 //==========================================================================
-long mac_fli_connect(flidev_t dev, char *name, long domain)
+long mac_fli_connect(flidev_t dev, const char *name, long domain)
 {
     debug(FLIDEBUG_INFO, "mac_fli_connect");
     

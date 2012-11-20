@@ -100,7 +100,7 @@ typedef struct {
   int fd;
 } fli_unixio_t;
 
-long unix_fli_connect(flidev_t dev, char *name, long domain);
+long unix_fli_connect(flidev_t dev, const char *name, long domain);
 long unix_fli_disconnect(flidev_t dev);
 long unix_fli_lock(flidev_t dev);
 long unix_fli_unlock(flidev_t dev);
