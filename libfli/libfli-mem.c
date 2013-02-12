@@ -278,15 +278,11 @@ int xasprintf(char **strp, const char *fmt, ...)
 
   va_start(ap, fmt);
 
-  if ((err = vasprintf(&tmp, fmt, ap)) < 0)
-    goto done;
-
-  if (saveptr(tmp) == NULL)
-    err = -1;
-
-	done:
+  err = vasprintf(&tmp, fmt, ap);
 
   va_end(ap);
+
+  *strp = tmp;
 
   return err;
 }
