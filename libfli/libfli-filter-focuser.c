@@ -981,7 +981,7 @@ static long fli_stepmotor(flidev_t dev, long steps, long block)
 				}
 
 				IO(dev, _buf, &wlen, &rlen);
-				if (_buf[0] != 0xa0)
+				if ((_buf[0] & 0xf0) != 0xa0)
 				{
 					debug(FLIDEBUG_WARN, "Invalid echo.");
 					return -EIO;
@@ -1002,7 +1002,7 @@ static long fli_stepmotor(flidev_t dev, long steps, long block)
 				}
 
 				IO(dev, _buf, &wlen, &rlen);
-				if (_buf[0] != 0x90)
+				if ((_buf[0] & 0xf0) != 0x90)
 				{
 					debug(FLIDEBUG_WARN, "Invalid echo.");
 					return -EIO;
@@ -1034,7 +1034,7 @@ static long fli_stepmotor(flidev_t dev, long steps, long block)
 
 			begin = clock();
 			stepsleft = 0;
-			while ( (stepsleft != 0x7000) && (block != 0) )
+			while ( (stepsleft != 0x7000) && (block != FLI_NON_BLOCK) )
 			{
 	#ifdef _WIN32
 				Sleep(100);
@@ -1091,7 +1091,7 @@ static long fli_stepmotor(flidev_t dev, long steps, long block)
 		}
 
 		stepsleft = -1;
-		while ( (stepsleft != 0) && (block != 0) )
+		while ( (stepsleft != 0) && (block != FLI_NON_BLOCK) )
 		{
 #ifdef _WIN32
 			Sleep(100);
@@ -1262,7 +1262,7 @@ static long fli_homedevice(flidev_t dev, long block)
 		}
 		begin = clock();
 		stepsleft = 0x04;
-		while ( ((stepsleft & 0x04) != 0) && (block != 0) )
+		while ( ((stepsleft & 0x04) != 0) && (block != FLI_NON_BLOCK) )
 		{
 #ifdef _WIN32
 			Sleep(100);
