@@ -161,9 +161,10 @@ static long fli_close(flidev_t dev)
   CHKDEVICE(dev);
   CHKFUNCTION(DEVICE->fli_close);
 
-	debug(FLIDEBUG_INFO, "Closing device index: %d ", dev);
+  debug(FLIDEBUG_INFO, "Closing device index: %d ", dev);
 
-	DEVICE->fli_close(dev);
+  DEVICE->fli_close(dev);
+  
   fli_disconnect(dev);
   devfree(dev);
 
@@ -303,13 +304,13 @@ LIBFLIAPI FLIClose(flidev_t dev)
 	long r;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	r = fli_close(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -418,6 +419,72 @@ LIBFLIAPI FLIGetHWRevision(flidev_t dev, long *hwrev)
   CHKDEVICE(dev);
 
   *hwrev = DEVICE->devinfo.hwrev;
+  return 0;
+}
+
+/**
+   Get the device type.
+
+   @param dev Device to find the hardware revision of.
+
+   @param devid Pointer to a long which will receive the device ID. Expected values are listed in libfli-libfli.h (FLIUSB_PROLINEID..).
+
+   @return Zero on success.
+   @return Non-zero on failure.
+
+   @see FLIGetModel
+   @see FLIGetFWRevision
+   @see FLIGetHWRevision
+*/
+LIBFLIAPI FLIGetDeviceID(flidev_t dev, long *devid)
+{
+  CHKDEVICE(dev);
+
+  *devid = DEVICE->devinfo.devid;
+  return 0;
+}
+
+/**
+   Get the serial number of a given device.
+
+   @param dev Device to find the hardware revision of.
+
+   @param serno Pointer to a long which will receive the serial number.
+
+   @return Zero on success.
+   @return Non-zero on failure.
+
+   @see FLIGetModel
+   @see FLIGetFWRevision
+   @see FLIGetHWRevision
+*/
+LIBFLIAPI FLIGetSerialNum(flidev_t dev, long *serno)
+{
+  CHKDEVICE(dev);
+
+  *serno = DEVICE->devinfo.serno;
+  return 0;
+}
+
+/**
+   Get name of a given device.
+
+   @param dev Device to find the hardware revision of.
+
+   @param devnam Pointer to a char pointer, which will point to device name.
+
+   @return Zero on success.
+   @return Non-zero on failure.
+
+   @see FLIGetModel
+   @see FLIGetFWRevision
+   @see FLIGetHWRevision
+*/
+LIBFLIAPI FLIGetDeviceName(flidev_t dev, const char **devnam)
+{
+  CHKDEVICE(dev);
+
+  *devnam = DEVICE->devinfo.devnam;
   return 0;
 }
 
@@ -629,13 +696,13 @@ LIBFLIAPI FLIOpen(flidev_t *dev, const char *name, flidomain_t domain)
 	long r;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
   r = fli_open(dev, name, domain);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1350,13 +1417,13 @@ LIBFLIAPI FLIGetStepsRemaining(flidev_t dev, long *steps)
   CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
   r = DEVICE->fli_command(dev, FLI_GET_STEPS_REMAINING, 1, steps);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1402,13 +1469,13 @@ LIBFLIAPI FLIStepMotorAsync(flidev_t dev, long steps)
   CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
   r = DEVICE->fli_command(dev, FLI_STEP_MOTOR_ASYNC, 1, &steps);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1436,13 +1503,13 @@ LIBFLIAPI FLIStepMotor(flidev_t dev, long steps)
 	CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	r = DEVICE->fli_command(dev, FLI_STEP_MOTOR, 1, &steps);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting  " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1470,13 +1537,13 @@ LIBFLIAPI FLIGetStepperPosition(flidev_t dev, long *position)
   CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
   r = DEVICE->fli_command(dev, FLI_GET_STEPPER_POS, 1, position);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 	
 	return r;
@@ -1507,13 +1574,13 @@ LIBFLIAPI FLIHomeDevice(flidev_t dev)
 	CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	r = DEVICE->fli_command(dev, FLI_HOME_DEVICE, 0);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1534,13 +1601,13 @@ LIBFLIAPI FLIHomeFocuser(flidev_t dev)
 	CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	r = DEVICE->fli_command(dev, FLI_HOME_FOCUSER, 0);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1562,13 +1629,13 @@ LIBFLIAPI FLIGetFocuserExtent(flidev_t dev, long *extent)
 	CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
   r = DEVICE->fli_command(dev, FLI_GET_FOCUSER_EXTENT, 1, extent);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;
@@ -1592,13 +1659,13 @@ LIBFLIAPI FLIReadTemperature(flidev_t dev, flichannel_t channel, double *tempera
 	CHKDEVICE(dev);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	r = DEVICE->fli_command(dev, FLI_READ_TEMPERATURE, 2, channel, temperature);
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Exiting " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Exiting %s", __FUNCTION__);
 #endif
 
 	return r;

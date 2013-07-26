@@ -571,7 +571,6 @@ long fli_filter_focuser_open(flidev_t dev)
 long fli_filter_focuser_close(flidev_t dev)
 {
   CHKDEVICE(dev);
-
   if (DEVICE->devinfo.model != NULL)
   {
     xfree(DEVICE->devinfo.model);
@@ -1168,7 +1167,7 @@ static long fli_getstepsremaining(flidev_t dev, long *pos)
   unsigned short buf[16];
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	if ( (DEVICE->devinfo.fwrev & 0x00ff) < 0x40)
@@ -1288,7 +1287,7 @@ static long fli_getstepperstatus(flidev_t dev, flistatus_t *status)
   fdata = DEVICE->device_data;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	/* Older hardware */
@@ -1331,7 +1330,7 @@ static long fli_setfilterpos(flidev_t dev, long pos)
   fdata = DEVICE->device_data;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	if (pos == FLI_FILTERPOSITION_HOME)
@@ -1459,7 +1458,7 @@ long fli_focuser_getfocuserextent(flidev_t dev, long *extent)
   fdata = DEVICE->device_data;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	*extent = fdata->extent;
@@ -1477,7 +1476,7 @@ long fli_focuser_readtemperature(flidev_t dev, flichannel_t channel, double *tem
   fdata = DEVICE->device_data;
 
 #ifdef SHOWFUNCTIONS
-	debug(FLIDEBUG_INFO, "Entering " __FUNCTION__);
+	debug(FLIDEBUG_INFO, "Entering %s", __FUNCTION__);
 #endif
 
 	if (fdata->numtempsensors == 0)

@@ -277,12 +277,14 @@ int xasprintf(char **strp, const char *fmt, ...)
   int err;
 
   va_start(ap, fmt);
-
   err = vasprintf(&tmp, fmt, ap);
-
   va_end(ap);
 
-  *strp = tmp;
+  if (err >= 0)
+  {
+    if ((*strp = saveptr(tmp)) == NULL)
+    	err = -1;
+  }
 
   return err;
 }

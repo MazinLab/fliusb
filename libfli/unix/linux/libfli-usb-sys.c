@@ -115,12 +115,19 @@ long linux_usb_connect(flidev_t dev, fli_unixio_t *io, const char *name)
     DEVICE->devinfo.serial = xstrndup(strdesc.buf, sizeof(strdesc.buf));
   }
   
+  // Following code should probably reset usb, it is problematic, but devices still seem to work. A've added some debug.
   confg = 0;
   r = ioctl (io->fd, USBDEVFS_SETCONFIGURATION, &confg);
-  debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION return %i", r);
+  if (r==-1)
+    debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION confg 0, return %i, error code: %s", r, strerror(errno));
+  else
+    debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION return %i", r);
   confg = 1;
   r = ioctl (io->fd, USBDEVFS_SETCONFIGURATION, &confg);
-  debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION return %i", r);
+  if (r==-1)
+    debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION confg 1, return %i, error code: %s", r, strerror(errno));
+  else
+    debug(FLIDEBUG_INFO, "USBDEVFS_SETCONFIGURATION return %i", r);
   return 0;
 }
 
