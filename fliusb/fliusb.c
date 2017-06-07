@@ -59,7 +59,9 @@
 #include <linux/mm.h>
 #include <linux/pagemap.h>
 #include <linux/scatterlist.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,7,36)
 #include <asm/scatterlist.h>
+#endif
 #endif
 
 #include "fliusb.h"
