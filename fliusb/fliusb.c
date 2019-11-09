@@ -259,7 +259,11 @@ static int fliusb_simple_bulk_read(fliusb_t *dev, unsigned int pipe,
   if (count > dev->buffersize)
     count = dev->buffersize;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0))
   if (!access_ok(VERIFY_WRITE, userbuffer, count))
+#else
+  if (!access_ok(userbuffer, count))
+#endif
     return -EFAULT;
 
   if (down_interruptible(&dev->buffsem))
@@ -285,9 +289,15 @@ static int fliusb_simple_bulk_read(fliusb_t *dev, unsigned int pipe,
 
 #ifdef SGREAD
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0))
 static void fliusb_sg_bulk_read_timeout(unsigned long data)
 {
   fliusb_t *dev = (fliusb_t *)data;
+#else
+static void fliusb_sg_bulk_read_timeout(struct timer_list *t)
+{
+  fliusb_t *dev = from_timer(dev, t, usbsg.timer);
+#endif
 
   FLIUSB_ERR("bulk read timed out");
   usb_sg_cancel(&dev->usbsg.sgreq);
@@ -326,7 +336,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
   down_read(&current->mm->mmap_sem);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
   numpg = get_user_pages((size_t)userbuffer & PAGE_MASK,
-			 numpg, 0, dev->usbsg.userpg, NULL);
+			 numpg, FOLL_WRITE, dev->usbsg.userpg, NULL);
 #else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
   numpg = get_user_pages((size_t)userbuffer & PAGE_MASK,
@@ -387,11 +397,15 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
     goto done;
   }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0))
   dev->usbsg.timer.expires = jiffies + (timeout * HZ + 500) / 1000;
   dev->usbsg.timer.data = (unsigned long)dev;
   dev->usbsg.timer.function = fliusb_sg_bulk_read_timeout;
   add_timer(&dev->usbsg.timer);
-
+#else
+  timer_setup(&dev->usbsg.timer, fliusb_sg_bulk_read_timeout, 0);
+  mod_timer(&dev->usbsg.timer, jiffies + (timeout * HZ + 500) / 1000);
+#endif
   /* wait for the transfer to complete */
   usb_sg_wait(&dev->usbsg.sgreq);
 
@@ -514,7 +528,11 @@ static int fliusb_bulk_write(fliusb_t *dev, unsigned int pipe,
   FLIUSB_DBG("pipe: 0x%08x; userbuffer: %p; count: %u; timeout: %u",
 	     pipe, userbuffer, count, timeout);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0))
   if (!access_ok(VERIFY_READ, userbuffer, count))
+#else
+  if (!access_ok(userbuffer, count))
+#endif
     return -EFAULT;
 
   if ((urb = usb_alloc_urb(0, GFP_KERNEL)) == NULL)
@@ -615,12 +633,20 @@ static long fliusb_ioctl(struct file *file,
 
   /* Check that arg can be read from */
   if ((_IOC_DIR(cmd) & _IOC_WRITE) &&
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0))
       !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd)))
+#else
+      !access_ok((void __user *)arg, _IOC_SIZE(cmd)))
+#endif
     return -EFAULT;
 
   /* Check that arg can be written to */
   if ((_IOC_DIR(cmd) & _IOC_READ) &&
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0))
       !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd)))
+#else
+      !access_ok((void __user *)arg, _IOC_SIZE(cmd)))
+#endif
     return -EFAULT;
 
   dev = (fliusb_t *)file->private_data;
@@ -825,7 +851,9 @@ static int fliusb_initdev(fliusb_t **dev, struct usb_interface *interface,
 
 #ifdef SGREAD
   tmpdev->usbsg.maxpg = NUMSGPAGE;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0))
   init_timer(&tmpdev->usbsg.timer);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)  
   init_MUTEX(&tmpdev->usbsg.sem);
 #else
