@@ -53,6 +53,7 @@
 #include <linux/fcntl.h>
 #include <asm/uaccess.h>
 #include <linux/slab.h>
+#include <linux/mmap_lock.h>
 
 
 #ifdef SGREAD
@@ -333,7 +334,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
   if (down_interruptible(&dev->usbsg.sem))
     return -ERESTARTSYS;
 
-  down_read(&current->mm->mmap_sem);
+  down_read(&current->mm->mmap_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
   numpg = get_user_pages((size_t)userbuffer & PAGE_MASK,
 			 numpg, FOLL_WRITE, dev->usbsg.userpg, NULL);
@@ -346,7 +347,7 @@ static int fliusb_sg_bulk_read(fliusb_t *dev, unsigned int pipe,
 			 numpg, 1, 0, dev->usbsg.userpg, NULL);
 #endif
 #endif
-  up_read(&current->mm->mmap_sem);
+  up_read(&current->mm->mmap_lock);
 
   if (numpg <= 0)
   {
